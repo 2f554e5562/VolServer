@@ -1,7 +1,7 @@
 import dataClasses.CreateUserI
 import database.UserAlreadyExists
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.exists
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.reflect.jvm.jvmName
 
@@ -22,7 +22,7 @@ class DatabaseModule {
         }
     }
 
-    fun createUser(user: CreateUserI): Int = transaction {
+    fun createUser(user: CreateUserI): UserRow = transaction {
         if (UserRow.find { UsersTable.login eq user.login.trim() }.count() == 0) {
             return@transaction UserRow.new {
                 login = user.login.trim()
@@ -45,9 +45,13 @@ class DatabaseModule {
 
                 if (user.vkLink != null)
                     vkLink = user.vkLink.trim()
-            }.id.value
+            }
         } else {
             throw UserAlreadyExists()
         }
+    }
+
+    fun findByLoginAndPassword(login: String, password: String): UserRow? = transaction {
+        UserRow.find { (UsersTable.login eq login) and (UsersTable.password eq password) }.firstOrNull()
     }
 }

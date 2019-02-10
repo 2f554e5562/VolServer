@@ -3,6 +3,7 @@ import com.fasterxml.jackson.module.kotlin.MissingKotlinParameterException
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import dataClasses.CreateTokenByLoginI
+import dataClasses.CreateTokenByLoginO
 import dataClasses.CreateUserI
 import dataClasses.CreateUserO
 import database.UserAlreadyExists
@@ -13,6 +14,7 @@ import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.post
 import io.ktor.routing.routing
+import utils.AuthUserData
 import utils.TokenManager
 
 val volDatabase = DatabaseModule()
@@ -32,11 +34,15 @@ fun Application.module(testing: Boolean = true) {
             try {
                 val createUserI = json.readValue<CreateUserI>(call.receive<ByteArray>())
 
-                val userId = volDatabase.createUser(
+                val user = volDatabase.createUser(
                     createUserI
                 )
 
-                val token = tokenManager.createToken(userId)
+                val token = tokenManager.createToken(AuthUserData(
+                    user.id.value,
+                    user.login,
+                    user.password
+                ))
 
                 call.respond(
                     HttpStatusCode.OK,
@@ -68,25 +74,41 @@ fun Application.module(testing: Boolean = true) {
             }
         }
 
-        post("/auth/token/create/byLogin") {
+        post("/auth/token/create/byLoginAndPassword") {
             val createTokenByLoginI = json.readValue<CreateTokenByLoginI>(call.receive<ByteArray>())
 
-            volDatabase.
-
-            call.respond(
-                HttpStatusCode.OK,
-                CreateUserO(
-                    tokenManager.createToken(1).toString()
-                ).writeValueAsString()
+            val user = volDatabase.findByLoginAndPassword(
+                createTokenByLoginI.login,
+                createTokenByLoginI.password
             )
+
+            if (user != null) {
+                call.respond(
+                    HttpStatusCode.OK,
+                    CreateTokenByLoginO(
+                        tokenManager.createToken(
+                            AuthUserData(
+                                user.id.value,
+                                user.login,
+                                user.password
+                            )
+                        ).toString()
+                    ).writeValueAsString()
+                )
+            } else {
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    ErrorMessage(
+                        Messages.e401
+                    ).writeValueAsString()
+                )
+            }
         }
 
         post("/auth/token/create/byRefreshToken") {
             call.respond(
                 HttpStatusCode.OK,
-                CreateUserO(
-                    tokenManager.createToken(1).toString()
-                ).writeValueAsString()
+                ""
             )
         }
 
