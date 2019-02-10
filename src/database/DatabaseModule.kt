@@ -54,4 +54,8 @@ class DatabaseModule {
     fun findByLoginAndPassword(login: String, password: String): UserRow? = transaction {
         UserRow.find { (UsersTable.login eq login) and (UsersTable.password eq password) }.firstOrNull()
     }
+
+    fun findUserById(id: Int): UserRow? = transaction {
+        UserRow.findById(id)
+    }
 }

@@ -35,3 +35,19 @@ data class CreateTokenByLoginI(
 data class CreateTokenByLoginO(
     @JsonProperty("token") val token: String
 )
+
+data class UsersProfileGetI(
+    @JsonProperty("token") val token: String,
+    @JsonProperty("id") val id: Int?
+)
+
+data class UsersProfileGetO(
+    @JsonProperty("firstName") val firstName: String,
+    @JsonProperty("lastName") val lastName: String,
+    @JsonProperty("middleName") val middleName: String,
+    @JsonProperty("about") val about: String?,
+    @JsonProperty("phoneNumber") val phoneNumber: String?,
+    @JsonProperty("image") val image: String?,
+    @JsonProperty("email") val email: String?,
+    @JsonProperty("vkLink") val vkLink: String?
+)
