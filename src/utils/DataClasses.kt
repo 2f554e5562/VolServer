@@ -1,9 +1,6 @@
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+package utils
 
-data class AuthData(
-    val login: String,
-    val password: String
-)
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 data class ErrorMessage(
     val message: String

@@ -6,6 +6,7 @@ object UsersTable: IntIdTable("users") {
     val firstName = text("first_name")
     val lastName = text("last_name")
     val middleName = text("middle_name")
+    val birthday = long("birthday")
     val about = text("about").nullable()
     val phoneNumber = text("phone_number").nullable()
     val image = text("image").default("default.png").nullable()
@@ -19,6 +20,7 @@ class UserRow(id: EntityID<Int>): IntEntity(id) {
     var password        by UsersTable.password
     var firstName       by UsersTable.firstName
     var lastName        by UsersTable.lastName
+    var birthday        by UsersTable.birthday
     var middleName      by UsersTable.middleName
     var about           by UsersTable.about
     var phoneNumber     by UsersTable.phoneNumber

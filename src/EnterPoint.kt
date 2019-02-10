@@ -9,8 +9,14 @@ import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.post
 import io.ktor.routing.routing
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.notLike
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.selectAll
 import utils.AuthUserData
+import utils.ErrorMessage
 import utils.TokenManager
+import utils.writeValueAsString
 
 val volDatabase = DatabaseModule()
 val tokenManager = TokenManager()
@@ -19,8 +25,7 @@ val json = jacksonObjectMapper()
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
 @Suppress("unused") // Referenced in application.conf
-@kotlin.jvm.JvmOverloads
-fun Application.module(testing: Boolean = true) {
+fun Application.module() {
     volDatabase.connect()
     volDatabase.initUserTable()
 
@@ -122,7 +127,7 @@ fun Application.module(testing: Boolean = true) {
             }
         }
 
-        post("/auth/users/create") {
+        post("/users/create") {
             try {
                 val createUserI = json.readValue<CreateUserI>(call.receive<ByteArray>())
 
@@ -161,7 +166,7 @@ fun Application.module(testing: Boolean = true) {
             }
         }
 
-        post("/auth/users/profile/get") {
+        post("/users/profile/get") {
             try {
                 val usersProfileGetI = json.readValue<UsersProfileGetI>(call.receive<ByteArray>())
 
@@ -186,47 +191,107 @@ fun Application.module(testing: Boolean = true) {
                     )
 
                     if (token.toString() == userToken.toString()) {
-                        if (usersProfileGetI.id == null || token.userId == usersProfileGetI.id) {
-                            call.respond(
-                                HttpStatusCode.OK,
-                                UsersProfileGetO(
+                        call.respond(
+                            HttpStatusCode.OK,
+                            UsersProfileGetO(
+                                UserProfile(
+                                    user.id.value,
                                     user.firstName,
                                     user.lastName,
                                     user.middleName,
+                                    user.birthday,
                                     user.about,
                                     user.phoneNumber,
                                     user.image,
                                     user.email,
                                     user.vkLink
-                                ).writeValueAsString()
-                            )
-                        } else {
-                            val data = volDatabase.findUserById(usersProfileGetI.id)
-
-                            if (data != null) {
-                                call.respond(
-                                    HttpStatusCode.OK,
-                                    UsersProfileGetO(
-                                        data.firstName,
-                                        data.lastName,
-                                        data.middleName,
-                                        data.about,
-                                        data.phoneNumber,
-                                        data.image,
-                                        data.email,
-                                        data.vkLink
-                                    ).writeValueAsString()
                                 )
+                            ).writeValueAsString()
+                        )
+                    } else {
+                        call.respond(
+                            HttpStatusCode.Unauthorized,
+                            ErrorMessage(
+                                Messages.e401
+                            ).writeValueAsString()
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorMessage(
+                        Messages.e400
+                    ).writeValueAsString()
+                )
+            }
+        }
 
-                            } else {
-                                call.respond(
-                                    HttpStatusCode.NotFound,
-                                    ErrorMessage(
-                                        Messages.e404
-                                    ).writeValueAsString()
-                                )
-                            }
-                        }
+        post("/users/find") {
+            try {
+                val usersFindI = json.readValue<UsersFindI>(call.receive<ByteArray>())
+
+                val token = tokenManager.parseToken(usersFindI.token)
+
+                val user = volDatabase.findUserById(token.userId)
+
+                if (user == null) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ErrorMessage(
+                            Messages.e401
+                        ).writeValueAsString()
+                    )
+                } else {
+                    val userToken = tokenManager.createToken(
+                        AuthUserData(
+                            user.id.value,
+                            user.login,
+                            user.password
+                        )
+                    )
+
+                    if (token.toString() == userToken.toString()) {
+                        val query = UsersTable.selectAll()
+
+                        if (usersFindI.parameters.ids != null)
+                            query.andWhere { UsersTable.id inList usersFindI.parameters.ids }
+
+                        if (usersFindI.parameters.firstName != null)
+                            query.andWhere { UsersTable.firstName like "%${usersFindI.parameters.firstName}%" }
+
+                        if (usersFindI.parameters.lastName != null)
+                            query.andWhere { UsersTable.lastName like "%${usersFindI.parameters.lastName}%" }
+
+                        if (usersFindI.parameters.middleName != null)
+                            query.andWhere { UsersTable.middleName like "%${usersFindI.parameters.middleName}%" }
+
+                        if (usersFindI.parameters.birthdayMin != null)
+                            query.andWhere { UsersTable.birthday greaterEq usersFindI.parameters.birthdayMin }
+
+                        if (usersFindI.parameters.birthdayMax != null)
+                            query.andWhere { UsersTable.birthday lessEq usersFindI.parameters.birthdayMax }
+
+                        if (usersFindI.parameters.about != null)
+                            query.andWhere { UsersTable.about like "%${usersFindI.parameters.about}%" }
+
+                        if (usersFindI.parameters.phoneNumber != null)
+                            query.andWhere { UsersTable.phoneNumber like "%${usersFindI.parameters.phoneNumber}%" }
+
+                        if (usersFindI.parameters.email != null)
+                            query.andWhere { UsersTable.email like "%${usersFindI.parameters.email}%" }
+
+                        if (usersFindI.parameters.vkLink != null)
+                            query.andWhere { UsersTable.vkLink like "%${usersFindI.parameters.vkLink}%" }
+
+                        val users = volDatabase.findUsersByParameters(query, usersFindI.offset, usersFindI.amount)
+
+                        call.respond(
+                            HttpStatusCode.OK,
+                            UsersFindO(
+                                users
+                            ).writeValueAsString()
+                        )
                     } else {
                         call.respond(
                             HttpStatusCode.Unauthorized,
