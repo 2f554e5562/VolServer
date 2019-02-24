@@ -1,11 +1,12 @@
-import dataClasses.CreateUserI
-import dataClasses.UserProfile
+import dataClasses.GroupData
+import dataClasses.UserData
+import dataClasses.UsersCreateI
+import database.GroupAlreadyExists
 import database.UserAlreadyExists
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
-import kotlin.reflect.jvm.jvmName
 
 class DatabaseModule {
     fun connect() = Database.connect(
@@ -15,12 +16,7 @@ class DatabaseModule {
         password = "123581321345589144233377"
     )
 
-    fun initUserTable() = transaction {
-        exec(UsersTable.createStatement().joinToString())
-        println("${UsersTable::class.jvmName}: OK")
-    }
-
-    fun createUser(user: CreateUserI): UserRow = transaction {
+    fun createUser(user: UsersCreateI): UserRow = transaction {
         if (UserRow.find { UsersTable.login eq user.login.trim() }.count() == 0) {
             return@transaction UserRow.new {
                 login = user.login.trim()
@@ -60,7 +56,7 @@ class DatabaseModule {
 
     fun findUsersByParameters(query: Query, offset: Int, amount: Int) = transaction {
         query.limit(amount, offset).map {
-            UserProfile(
+            UserData(
                 it[UsersTable.id].value,
                 it[UsersTable.firstName],
                 it[UsersTable.lastName],
@@ -71,6 +67,49 @@ class DatabaseModule {
                 it[UsersTable.image],
                 it[UsersTable.email],
                 it[UsersTable.vkLink]
+            )
+        }
+    }
+
+    fun createGroup(group: GroupData, userId: Int): GroupRow = transaction {
+        if (GroupRow.find { GroupsTable.title eq group.title.trim() }.count() == 0) {
+            return@transaction GroupRow.new {
+                title = group.title.trim()
+                creatorId = userId
+                description = group.description.trim()
+                canPost = group.canPost
+
+                group.color?.let {
+                    color = it.trim()
+                }
+
+                group.image?.let {
+                    image = it.trim()
+                }
+
+                group.vkLink?.let {
+                    vkLink = it.trim()
+                }
+            }
+        } else {
+            throw GroupAlreadyExists()
+        }
+    }
+
+    fun findGroupById(id: Int): GroupRow? = transaction {
+        GroupRow.findById(id)
+    }
+
+    fun findGroupsByParameters(query: Query, offset: Int, amount: Int) = transaction {
+        query.limit(amount, offset).map {
+            GroupData(
+                it[GroupsTable.title],
+                it[GroupsTable.description],
+                it[GroupsTable.canPost],
+                it[GroupsTable.color],
+                it[GroupsTable.image],
+                it[GroupsTable.vkLink],
+                it[GroupsTable.creatorId]
             )
         }
     }

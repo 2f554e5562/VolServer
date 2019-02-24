@@ -1,6 +1,7 @@
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import dataClasses.*
+import database.GroupAlreadyExists
 import database.UserAlreadyExists
 import io.ktor.application.Application
 import io.ktor.application.call
@@ -9,8 +10,6 @@ import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.post
 import io.ktor.routing.routing
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.notLike
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import utils.AuthUserData
@@ -27,7 +26,6 @@ fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 @Suppress("unused") // Referenced in application.conf
 fun Application.module() {
     volDatabase.connect()
-    volDatabase.initUserTable()
 
     routing {
         post("/auth/token/create/byLoginAndPassword") {
@@ -129,7 +127,7 @@ fun Application.module() {
 
         post("/users/create") {
             try {
-                val createUserI = json.readValue<CreateUserI>(call.receive<ByteArray>())
+                val createUserI = json.readValue<UsersCreateI>(call.receive<ByteArray>())
 
                 val user = volDatabase.createUser(
                     createUserI
@@ -144,8 +142,8 @@ fun Application.module() {
                 )
 
                 call.respond(
-                    HttpStatusCode.OK,
-                    CreateUserO(
+                    HttpStatusCode.Created,
+                    UsersCreateO(
                         token.toString()
                     ).writeValueAsString()
                 )
@@ -194,7 +192,7 @@ fun Application.module() {
                         call.respond(
                             HttpStatusCode.OK,
                             UsersProfileGetO(
-                                UserProfile(
+                                UserData(
                                     user.id.value,
                                     user.firstName,
                                     user.lastName,
@@ -254,42 +252,52 @@ fun Application.module() {
                     if (token.toString() == userToken.toString()) {
                         val query = UsersTable.selectAll()
 
-                        if (usersFindI.parameters.ids != null)
-                            query.andWhere { UsersTable.id inList usersFindI.parameters.ids }
+                        usersFindI.parameters.apply {
+                            ids?.let { ids ->
+                                query.andWhere { UsersTable.id inList ids }
+                            }
 
-                        if (usersFindI.parameters.firstName != null)
-                            query.andWhere { UsersTable.firstName like "%${usersFindI.parameters.firstName}%" }
+                            firstName?.let { firstName ->
+                                query.andWhere { UsersTable.firstName like "%$firstName%" }
+                            }
 
-                        if (usersFindI.parameters.lastName != null)
-                            query.andWhere { UsersTable.lastName like "%${usersFindI.parameters.lastName}%" }
+                            lastName?.let { lastName ->
+                                query.andWhere { UsersTable.lastName like "%$lastName%" }
+                            }
 
-                        if (usersFindI.parameters.middleName != null)
-                            query.andWhere { UsersTable.middleName like "%${usersFindI.parameters.middleName}%" }
+                            middleName?.let { middleName ->
+                                query.andWhere { UsersTable.middleName like "%$middleName%" }
+                            }
 
-                        if (usersFindI.parameters.birthdayMin != null)
-                            query.andWhere { UsersTable.birthday greaterEq usersFindI.parameters.birthdayMin }
+                            birthdayMin?.let { birthdayMin ->
+                                query.andWhere { UsersTable.birthday greaterEq birthdayMin }
+                            }
 
-                        if (usersFindI.parameters.birthdayMax != null)
-                            query.andWhere { UsersTable.birthday lessEq usersFindI.parameters.birthdayMax }
+                            birthdayMax?.let { birthdayMax ->
+                                query.andWhere { UsersTable.birthday lessEq birthdayMax }
+                            }
 
-                        if (usersFindI.parameters.about != null)
-                            query.andWhere { UsersTable.about like "%${usersFindI.parameters.about}%" }
+                            about?.let { about ->
+                                query.andWhere { UsersTable.about like "%$about%" }
+                            }
 
-                        if (usersFindI.parameters.phoneNumber != null)
-                            query.andWhere { UsersTable.phoneNumber like "%${usersFindI.parameters.phoneNumber}%" }
+                            phoneNumber?.let { phoneNumber ->
+                                query.andWhere { UsersTable.phoneNumber like "%$phoneNumber%" }
+                            }
 
-                        if (usersFindI.parameters.email != null)
-                            query.andWhere { UsersTable.email like "%${usersFindI.parameters.email}%" }
+                            email?.let { email ->
+                                query.andWhere { UsersTable.email like "%$email%" }
+                            }
 
-                        if (usersFindI.parameters.vkLink != null)
-                            query.andWhere { UsersTable.vkLink like "%${usersFindI.parameters.vkLink}%" }
-
-                        val users = volDatabase.findUsersByParameters(query, usersFindI.offset, usersFindI.amount)
+                            vkLink?.let { vkLink ->
+                                query.andWhere { UsersTable.vkLink like "%$vkLink%" }
+                            }
+                        }
 
                         call.respond(
                             HttpStatusCode.OK,
                             UsersFindO(
-                                users
+                                volDatabase.findUsersByParameters(query, usersFindI.offset, usersFindI.amount)
                             ).writeValueAsString()
                         )
                     } else {
@@ -311,12 +319,11 @@ fun Application.module() {
             }
         }
 
-        post("example") {
+        post("/groups/create") {
             try {
-                //TODO inputDataI -> ..., String -> ...
-                val inputDataI = json.readValue<UsersProfileGetI>(call.receive<ByteArray>())
+                val groupCreateI = json.readValue<GroupCreateI>(call.receive<ByteArray>())
 
-                val token = tokenManager.parseToken(inputDataI.token)
+                val token = tokenManager.parseToken(groupCreateI.token)
 
                 val user = volDatabase.findUserById(token.userId)
 
@@ -337,7 +344,104 @@ fun Application.module() {
                     )
 
                     if (token.toString() == userToken.toString()) {
-                        //TODO Work...
+                        val group = volDatabase.createGroup(
+                            groupCreateI.data, user.id.value
+                        )
+
+                        call.respond(
+                            HttpStatusCode.Created,
+                            GroupCreateO(
+                                GroupData(
+                                    group.title,
+                                    group.description,
+                                    group.canPost,
+                                    group.color,
+                                    group.image,
+                                    group.vkLink,
+                                    group.creatorId
+                                )
+                            ).writeValueAsString()
+                        )
+                    } else {
+                        call.respond(
+                            HttpStatusCode.Unauthorized,
+                            ErrorMessage(
+                                Messages.e401
+                            ).writeValueAsString()
+                        )
+                    }
+                }
+            } catch (e: GroupAlreadyExists) {
+                call.respond(
+                    HttpStatusCode.Conflict,
+                    ErrorMessage(
+                        Messages.e409
+                    ).writeValueAsString()
+                )
+            } catch (e: Exception) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorMessage(
+                        Messages.e400
+                    ).writeValueAsString()
+                )
+            }
+        }
+
+        post("/groups/find") {
+            try {
+                val groupFindI = json.readValue<GroupsFindI>(call.receive<ByteArray>())
+
+                val token = tokenManager.parseToken(groupFindI.token)
+
+                val user = volDatabase.findUserById(token.userId)
+
+                if (user == null) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ErrorMessage(
+                            Messages.e401
+                        ).writeValueAsString()
+                    )
+                } else {
+                    val userToken = tokenManager.createToken(
+                        AuthUserData(
+                            user.id.value,
+                            user.login,
+                            user.password
+                        )
+                    )
+
+                    if (token.toString() == userToken.toString()) {
+                        val query = GroupsTable.selectAll()
+
+                        groupFindI.parameters.apply {
+                            ids?.let { ids ->
+                                query.andWhere { GroupsTable.id inList ids }
+                            }
+                            title?.let { title ->
+                                query.andWhere { GroupsTable.title like "%$title%" }
+                            }
+                            description?.let { description ->
+                                query.andWhere { GroupsTable.description like "%$description%" }
+                            }
+                            canPost?.let { canPost ->
+                                query.andWhere { GroupsTable.canPost eq canPost }
+                            }
+                            vkLink?.let { vkLink ->
+                                query.andWhere { GroupsTable.vkLink like "%$vkLink%" }
+                            }
+                            creatorIds?.let { creatorIds ->
+                                query.andWhere { GroupsTable.creatorId inList creatorIds }
+                            }
+                        }
+
+                        call.respond(
+                            HttpStatusCode.OK,
+                            GroupsFindO(
+                                volDatabase.findGroupsByParameters(query, groupFindI.offset, groupFindI.amount)
+                            ).writeValueAsString()
+                        )
                     } else {
                         call.respond(
                             HttpStatusCode.Unauthorized,
