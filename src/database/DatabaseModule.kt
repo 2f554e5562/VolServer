@@ -7,6 +7,7 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
+import utils.trimAllSpaces
 
 class DatabaseModule {
     fun connect() = Database.connect(
@@ -17,29 +18,29 @@ class DatabaseModule {
     )
 
     fun createUser(user: UsersCreateI): UserRow = transaction {
-        if (UserRow.find { UsersTable.login eq user.login.trim() }.count() == 0) {
+        if (UserRow.find { UsersTable.login eq user.login.trimAllSpaces() }.count() == 0) {
             return@transaction UserRow.new {
-                login = user.login.trim()
-                password = user.password.trim()
-                firstName = user.data.firstName.trim()
-                lastName = user.data.lastName.trim()
-                middleName = user.data.middleName.trim()
+                login = user.login.trimAllSpaces()
+                password = user.password.trimAllSpaces()
+                firstName = user.data.firstName.trimAllSpaces()
+                lastName = user.data.lastName.trimAllSpaces()
+                middleName = user.data.middleName.trimAllSpaces()
                 birthday = user.data.birthday
 
                 if (user.data.about != null)
-                    about = user.data.about.trim()
+                    about = user.data.about.trimAllSpaces()
 
                 if (user.data.phoneNumber != null)
-                    phoneNumber = user.data.phoneNumber.trim()
+                    phoneNumber = user.data.phoneNumber.trimAllSpaces()
 
                 if (user.data.image != null)
-                    image = user.data.image.trim()
+                    image = user.data.image.trimAllSpaces()
 
                 if (user.data.email != null)
-                    email = user.data.email.trim()
+                    email = user.data.email.trimAllSpaces()
 
                 if (user.data.vkLink != null)
-                    vkLink = user.data.vkLink.trim()
+                    vkLink = user.data.vkLink.trimAllSpaces()
             }
         } else {
             throw UserAlreadyExists()
@@ -72,23 +73,23 @@ class DatabaseModule {
     }
 
     fun createGroup(group: GroupData, userId: Int): GroupRow = transaction {
-        if (GroupRow.find { GroupsTable.title eq group.title.trim() }.count() == 0) {
+        if (GroupRow.find { GroupsTable.title eq group.title.trimAllSpaces() }.count() == 0) {
             return@transaction GroupRow.new {
-                title = group.title.trim()
+                title = group.title.trimAllSpaces()
                 creatorId = userId
-                description = group.description.trim()
+                description = group.description.trimAllSpaces()
                 canPost = group.canPost
 
                 group.color?.let {
-                    color = it.trim()
+                    color = it.trimAllSpaces()
                 }
 
                 group.image?.let {
-                    image = it.trim()
+                    image = it.trimAllSpaces()
                 }
 
                 group.vkLink?.let {
-                    vkLink = it.trim()
+                    vkLink = it.trimAllSpaces()
                 }
             }
         } else {

@@ -101,7 +101,7 @@ data class UserData(
     @JsonProperty("vkLink") val vkLink: String?
 )
 
-data class UserDataSearch(
+class UserDataSearch(
     @JsonProperty("ids") val ids: List<Int>? = null,
     @JsonProperty("firstName") val firstName: String? = null,
     @JsonProperty("lastName") val lastName: String? = null,

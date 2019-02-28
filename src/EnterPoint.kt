@@ -7,15 +7,14 @@ import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receive
+import io.ktor.request.receiveStream
 import io.ktor.response.respond
 import io.ktor.routing.post
 import io.ktor.routing.routing
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
-import utils.AuthUserData
-import utils.ErrorMessage
-import utils.TokenManager
-import utils.writeValueAsString
+import utils.*
+import java.io.File
 
 val volDatabase = DatabaseModule()
 val tokenManager = TokenManager()
@@ -452,6 +451,32 @@ fun Application.module() {
                     }
                 }
             } catch (e: Exception) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorMessage(
+                        Messages.e400
+                    ).writeValueAsString()
+                )
+            }
+        }
+
+        post("/users/upload/image") {
+            try {
+                val uploadedFile = call.receiveStream()
+
+                val file = File(
+                    "/home/nikita/Desktop/VolServer/files/users/images/",
+                    "${System.currentTimeMillis()} ${uploadedFile.hashCode()}".getHashSHA256() + ".jpg"
+                )
+
+                file.outputStream().buffered().use { output ->
+                    uploadedFile.copyToSuspend(output)
+                }
+
+                call.respond(
+                    HttpStatusCode.OK
+                )
+            } catch (error: Exception) {
                 call.respond(
                     HttpStatusCode.BadRequest,
                     ErrorMessage(
