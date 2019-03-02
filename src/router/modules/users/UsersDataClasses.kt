@@ -1,15 +1,12 @@
 import com.fasterxml.jackson.annotation.JsonProperty
 
-data class UsersProfileGetI(
-    @JsonProperty("token") val token: String
-)
+//data class UsersProfileGetI()
 
 data class UsersProfileGetO(
     @JsonProperty("data") val data: UserData
 )
 
 data class UsersFindI(
-    @JsonProperty("token") val token: String,
     @JsonProperty("amount") val amount: Int,
     @JsonProperty("offset") val offset: Int,
     @JsonProperty("parameters") val parameters: UserDataSearch

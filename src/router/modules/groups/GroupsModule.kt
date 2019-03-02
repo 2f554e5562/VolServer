@@ -9,10 +9,7 @@ import io.ktor.routing.Routing
 import io.ktor.routing.post
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
-import utils.AuthUserData
 import utils.ErrorMessage
-import utils.TokenManager
-import utils.writeValueAsString
 
 
 fun Routing.groupsCreate(
@@ -24,7 +21,7 @@ fun Routing.groupsCreate(
         try {
             val groupCreateI = json.readValue<GroupCreateI>(call.receive<ByteArray>())
 
-            val token = tokenManager.parseToken(groupCreateI.token)
+            val token = tokenManager.parseToken(call.request.headers["Access-Token"] ?: throw IllegalStateException())
 
             val user = volDatabase.findUserById(token.userId)
 
@@ -99,7 +96,7 @@ fun Routing.groupsFind(
         try {
             val groupFindI = json.readValue<GroupsFindI>(call.receive<ByteArray>())
 
-            val token = tokenManager.parseToken(groupFindI.token)
+            val token = tokenManager.parseToken(call.request.headers["Access-Token"] ?: throw IllegalStateException())
 
             val user = volDatabase.findUserById(token.userId)
 

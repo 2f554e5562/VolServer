@@ -1,5 +1,3 @@
-package utils
-
 data class Token(
     val userId: Int,
     val userStamp: String

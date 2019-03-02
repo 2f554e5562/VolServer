@@ -1,24 +1,31 @@
-package utils
-
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.ktor.network.util.ioCoroutineDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import java.io.InputStream
 import java.io.OutputStream
+import java.security.MessageDigest
+
+fun String.getHashSHA256(): String {
+    val md = MessageDigest.getInstance("SHA-256")
+    val digest = md.digest(this.toByteArray())
+    return digest.fold("") { str, it ->
+        str + "%02x".format(it)
+    }
+}
 
 fun Any.writeValueAsString(): String =
     jacksonObjectMapper().writeValueAsString(this)
 
 fun String.trimAllSpaces(): String =
-        Regex("\\s+").replace(this, " ").trim()
+    Regex("\\s+").replace(this, " ").trim()
 
 suspend fun InputStream.copyToSuspend(
     out: OutputStream,
     bufferSize: Int = DEFAULT_BUFFER_SIZE,
     yieldSize: Int = 4 * 1024 * 1024,
-    dispatcher: CoroutineDispatcher = ioCoroutineDispatcher
+    dispatcher: CoroutineDispatcher = Dispatchers.IO
 ): Long {
     return withContext(dispatcher) {
         val buffer = ByteArray(bufferSize)

@@ -8,10 +8,7 @@ import io.ktor.routing.Routing
 import io.ktor.routing.post
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
-import utils.AuthUserData
 import utils.ErrorMessage
-import utils.TokenManager
-import utils.writeValueAsString
 
 fun Routing.usersProfileGet(
     json: ObjectMapper,
@@ -20,9 +17,7 @@ fun Routing.usersProfileGet(
 ) =
     post("/users/profile/get") {
         try {
-            val usersProfileGetI = json.readValue<UsersProfileGetI>(call.receive<ByteArray>())
-
-            val token = tokenManager.parseToken(usersProfileGetI.token)
+            val token = tokenManager.parseToken(call.request.headers["Access-Token"] ?: throw IllegalStateException())
 
             val user = volDatabase.findUserById(token.userId)
 
@@ -79,7 +74,7 @@ fun Routing.usersProfileGet(
         }
     }
 
-fun Routing.usersFing(
+fun Routing.usersFind(
     json: ObjectMapper,
     tokenManager: TokenManager,
     volDatabase: DatabaseModule
@@ -88,7 +83,7 @@ fun Routing.usersFing(
         try {
             val usersFindI = json.readValue<UsersFindI>(call.receive<ByteArray>())
 
-            val token = tokenManager.parseToken(usersFindI.token)
+            val token = tokenManager.parseToken(call.request.headers["Access-Token"] ?: throw IllegalStateException())
 
             val user = volDatabase.findUserById(token.userId)
 

@@ -10,9 +10,9 @@ import groupsFind
 import imageUpload
 import io.ktor.application.Application
 import io.ktor.routing.routing
-import usersFing
+import usersFind
 import usersProfileGet
-import utils.TokenManager
+import TokenManager
 
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
@@ -33,7 +33,7 @@ fun Application.module() {
 
         usersProfileGet(json, tokenManager, volDatabase)
 
-        usersFing(json, tokenManager, volDatabase)
+        usersFind(json, tokenManager, volDatabase)
 
         groupsCreate(json, tokenManager, volDatabase)
 

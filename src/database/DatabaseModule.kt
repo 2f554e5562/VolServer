@@ -4,7 +4,6 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
-import utils.trimAllSpaces
 
 class DatabaseModule {
     fun connect() = Database.connect(

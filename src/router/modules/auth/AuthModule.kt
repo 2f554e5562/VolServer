@@ -7,10 +7,7 @@ import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.Routing
 import io.ktor.routing.post
-import utils.AuthUserData
 import utils.ErrorMessage
-import utils.TokenManager
-import utils.writeValueAsString
 
 fun Routing.authTokenCreateByLoginAndPassword(
     json: ObjectMapper,
@@ -64,10 +61,8 @@ fun Routing.authTokenCreateByRefreshToken(
 ) =
     post("/auth/token/create/byRefreshToken") {
         try {
-            val createTokenByRefreshTokenI =
-                json.readValue<CreateTokenByRefreshTokenI>(call.receive<ByteArray>())
-
-            val refreshToken = tokenManager.parseToken(createTokenByRefreshTokenI.refreshToken)
+            val refreshToken =
+                tokenManager.parseToken(call.request.headers["Refresh-Token"] ?: throw IllegalStateException())
 
             val user = volDatabase.findUserById(refreshToken.userId)
 

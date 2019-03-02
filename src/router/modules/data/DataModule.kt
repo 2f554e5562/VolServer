@@ -5,8 +5,6 @@ import io.ktor.response.respond
 import io.ktor.routing.Routing
 import io.ktor.routing.post
 import utils.ErrorMessage
-import utils.copyToSuspend
-import utils.writeValueAsString
 import java.io.File
 
 fun Routing.imageUpload() =
@@ -24,7 +22,10 @@ fun Routing.imageUpload() =
             }
 
             call.respond(
-                HttpStatusCode.OK
+                HttpStatusCode.OK,
+                ImageUploadO(
+                    file.name
+                ).writeValueAsString()
             )
         } catch (error: Exception) {
             call.respond(

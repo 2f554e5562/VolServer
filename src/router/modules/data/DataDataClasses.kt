@@ -1,5 +1,3 @@
-package router.modules.data
-
 import com.fasterxml.jackson.annotation.JsonProperty
 
 data class ImageUploadO(

@@ -1,5 +1,5 @@
 package database
 
-class UserAlreadyExists: Throwable()
+class UserAlreadyExists : Throwable()
 
-class GroupAlreadyExists: Throwable()
+class GroupAlreadyExists : Throwable()

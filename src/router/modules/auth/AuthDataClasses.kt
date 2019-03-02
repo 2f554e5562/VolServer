@@ -1,9 +1,5 @@
 import com.fasterxml.jackson.annotation.JsonProperty
 
-data class CreateTokenByRefreshTokenI(
-    @JsonProperty("refreshToken") val refreshToken: String
-)
-
 data class CreateTokenByRefreshTokenO(
     @JsonProperty("token") val string: String
 )

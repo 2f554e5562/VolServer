@@ -1,7 +1,6 @@
 import com.fasterxml.jackson.annotation.JsonProperty
 
 data class GroupCreateI(
-    @JsonProperty("token") val token: String,
     @JsonProperty("data") val data: GroupData
 )
 
@@ -10,7 +9,6 @@ data class GroupCreateO(
 )
 
 data class GroupsFindI(
-    @JsonProperty("token") val token: String,
     @JsonProperty("offset") val offset: Int,
     @JsonProperty("amount") val amount: Int,
     @JsonProperty("parameters") val parameters: GroupDataSearch
@@ -19,6 +17,7 @@ data class GroupsFindI(
 data class GroupsFindO(
     @JsonProperty("groups") val groups: List<GroupData>
 )
+
 
 data class GroupData(
     @JsonProperty("title") val title: String,
