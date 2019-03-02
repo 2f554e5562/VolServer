@@ -1,14 +1,11 @@
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.application.call
-import io.ktor.http.HttpStatusCode
 import io.ktor.request.receive
-import io.ktor.response.respond
 import io.ktor.routing.Routing
 import io.ktor.routing.post
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
-import utils.ErrorMessage
 
 fun Routing.usersProfileGet(
     json: ObjectMapper,
@@ -22,12 +19,7 @@ fun Routing.usersProfileGet(
             val user = volDatabase.findUserById(token.userId)
 
             if (user == null) {
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorMessage(
-                        Messages.e401
-                    ).writeValueAsString()
-                )
+                respondUnauthorized()
             } else {
                 val userToken = tokenManager.createToken(
                     AuthUserData(
@@ -38,8 +30,7 @@ fun Routing.usersProfileGet(
                 )
 
                 if (token.toString() == userToken.toString()) {
-                    call.respond(
-                        HttpStatusCode.OK,
+                    respondOk(
                         UsersProfileGetO(
                             UserData(
                                 user.id.value,
@@ -56,21 +47,11 @@ fun Routing.usersProfileGet(
                         ).writeValueAsString()
                     )
                 } else {
-                    call.respond(
-                        HttpStatusCode.Unauthorized,
-                        ErrorMessage(
-                            Messages.e401
-                        ).writeValueAsString()
-                    )
+                    respondUnauthorized()
                 }
             }
         } catch (e: Exception) {
-            call.respond(
-                HttpStatusCode.BadRequest,
-                ErrorMessage(
-                    Messages.e400
-                ).writeValueAsString()
-            )
+            respondBadRequest()
         }
     }
 
@@ -88,12 +69,7 @@ fun Routing.usersFind(
             val user = volDatabase.findUserById(token.userId)
 
             if (user == null) {
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorMessage(
-                        Messages.e401
-                    ).writeValueAsString()
-                )
+                respondUnauthorized()
             } else {
                 val userToken = tokenManager.createToken(
                     AuthUserData(
@@ -148,27 +124,16 @@ fun Routing.usersFind(
                         }
                     }
 
-                    call.respond(
-                        HttpStatusCode.OK,
+                    respondOk(
                         UsersFindO(
                             volDatabase.findUsersByParameters(query, usersFindI.offset, usersFindI.amount)
                         ).writeValueAsString()
                     )
                 } else {
-                    call.respond(
-                        HttpStatusCode.Unauthorized,
-                        ErrorMessage(
-                            Messages.e401
-                        ).writeValueAsString()
-                    )
+                    respondUnauthorized()
                 }
             }
         } catch (e: Exception) {
-            call.respond(
-                HttpStatusCode.BadRequest,
-                ErrorMessage(
-                    Messages.e400
-                ).writeValueAsString()
-            )
+            respondBadRequest()
         }
     }

@@ -1,10 +1,12 @@
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.application.call
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.ContentType
+import io.ktor.request.receive
 import io.ktor.request.receiveStream
-import io.ktor.response.respond
+import io.ktor.response.respondBytes
 import io.ktor.routing.Routing
 import io.ktor.routing.post
-import utils.ErrorMessage
 import java.io.File
 
 fun Routing.imageUpload() =
@@ -21,18 +23,38 @@ fun Routing.imageUpload() =
                 uploadedFile.copyToSuspend(output)
             }
 
-            call.respond(
-                HttpStatusCode.OK,
+            respondOk(
                 ImageUploadO(
                     file.name
                 ).writeValueAsString()
             )
         } catch (error: Exception) {
-            call.respond(
-                HttpStatusCode.BadRequest,
-                ErrorMessage(
-                    Messages.e400
-                ).writeValueAsString()
+            respondBadRequest()
+        }
+    }
+
+fun Routing.imageLoad(json: ObjectMapper) =
+    post("/load/image") {
+        try {
+            val imageLoadI = json.readValue<ImageLoadI>(call.receive<ByteArray>())
+
+            val file = File(
+                "/home/nikita/Desktop/VolServer/files/uploaded/images/",
+                imageLoadI.fileName
             )
+
+            if (!file.exists()) {
+                call.respondBytes(
+                    file.readBytes(),
+                    ContentType.Image.Any
+                )
+            }
+
+            call.respondBytes(
+                file.readBytes(),
+                ContentType.Image.Any
+            )
+        } catch (error: Exception) {
+            respondBadRequest()
         }
     }

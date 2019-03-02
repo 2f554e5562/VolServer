@@ -13,6 +13,7 @@ import io.ktor.routing.routing
 import usersFind
 import usersProfileGet
 import TokenManager
+import imageLoad
 
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
@@ -40,5 +41,7 @@ fun Application.module() {
         groupsFind(json, tokenManager, volDatabase)
 
         imageUpload()
+
+        imageLoad(json)
     }
 }
