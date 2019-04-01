@@ -1,62 +1,60 @@
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import database.GroupAlreadyExists
 import io.ktor.application.call
 import io.ktor.request.receive
 import io.ktor.routing.Routing
 import io.ktor.routing.post
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.selectAll
 
-
-fun Routing.groupsCreate(
+fun Routing.eventsCreate(
     json: ObjectMapper,
     tokenManager: TokenManager,
     volDatabase: DatabaseModule
 ) =
-    post("/groups/create") {
+    post("/events/create") {
         try {
-            val groupCreateI = json.readValue<GroupCreateI>(call.receive<ByteArray>())
+            val eventCreateI = json.readValue<EventCreateI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val group = volDatabase.createGroup(
-                    groupCreateI.data, user.id.value
+                val event = volDatabase.createEvent(
+                    eventCreateI.data, user.id.value
                 )
 
                 respondCreated(
-                    GroupCreateO(
-                        GroupFullData(
-                            group.id.value,
-                            group.title,
-                            group.description,
-                            group.canPost,
-                            group.color,
-                            group.image,
-                            group.link,
-                            group.creatorId
+                    EventCreateO(
+                        EventFullData(
+                            event.id.value,
+                            event.title,
+                            event.authorId,
+                            event.place,
+                            event.datetime,
+                            event.duration,
+                            event.description,
+                            event.link
                         )
                     ).writeValueAsString()
                 )
             }
-        } catch (e: GroupAlreadyExists) {
-            respondConflict()
         } catch (e: Exception) {
             respondBadRequest()
         }
     }
 
 
-fun Routing.groupsFind(
+fun Routing.eventsFind(
     json: ObjectMapper,
     tokenManager: TokenManager,
     volDatabase: DatabaseModule
 ) =
-    post("/groups/list/find") {
+        post("/events/list/get") {
         try {
-            val groupFindI = json.readValue<GroupsFindI>(call.receive<ByteArray>())
+            val eventsFindI = json.readValue<EventsFindI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
                 respondOk(
-                    GroupsFindO(
-                        volDatabase.findGroupsByParameters(groupFindI.parameters, groupFindI.offset, groupFindI.amount)
+                    EventsFindO(
+                        volDatabase.findEventsByParameters(eventsFindI.parameters, eventsFindI.offset, eventsFindI.amount)
                     ).writeValueAsString()
                 )
             }
@@ -65,26 +63,25 @@ fun Routing.groupsFind(
         }
     }
 
-
-fun Routing.groupsEdit(
+fun Routing.eventsEdit(
     json: ObjectMapper,
     tokenManager: TokenManager,
     volDatabase: DatabaseModule
 ) =
-    post("/groups/{id}/edit") {
+    post("/events/{id}/edit") {
         try {
-            val groupsEditI = json.readValue<GroupsEditI>(call.receive<ByteArray>())
+            val eventsEditI = json.readValue<EventsEditI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val groupId = call.request.headers["id"]?.toInt()
+                val eventId = call.request.headers["id"]?.toInt()
 
-                if (groupId != null) {
-                    val groupData = volDatabase.editGroup(groupsEditI.newData, groupId)
+                if (eventId != null) {
+                    val eventData = volDatabase.editEvent(eventsEditI.newData, eventId)
 
-                    if (groupData != null) {
+                    if (eventData != null) {
                         respondOk(
-                            GroupsEditO(
-                                groupData
+                            EventsEditO(
+                                eventData
                             ).writeValueAsString()
                         )
                     } else {
@@ -98,3 +95,4 @@ fun Routing.groupsEdit(
             respondBadRequest()
         }
     }
+

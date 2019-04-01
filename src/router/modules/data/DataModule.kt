@@ -10,7 +10,7 @@ import io.ktor.routing.post
 import java.io.File
 
 fun Routing.imageUpload() =
-    post("/upload/image") {
+    post("/image/upload") {
         try {
             val uploadedFile = call.receiveStream()
 
@@ -34,7 +34,7 @@ fun Routing.imageUpload() =
     }
 
 fun Routing.imageLoad(json: ObjectMapper) =
-    post("/load/image") {
+    post("/image/load") {
         try {
             val imageLoadI = json.readValue<ImageLoadI>(call.receive<ByteArray>())
 

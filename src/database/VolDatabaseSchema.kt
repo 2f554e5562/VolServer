@@ -14,7 +14,7 @@ object UsersTable : IntIdTable("users") {
     val phoneNumber = text("phone_number").nullable()
     val image = text("image").default("default.png").nullable()
     val email = text("email").nullable()
-    val vkLink = text("vk_link").nullable()
+    val link = text("link").nullable()
 }
 
 class UserRow(id: EntityID<Int>) : IntEntity(id) {
@@ -30,17 +30,17 @@ class UserRow(id: EntityID<Int>) : IntEntity(id) {
     var phoneNumber by UsersTable.phoneNumber
     var image by UsersTable.image
     var email by UsersTable.email
-    var vkLink by UsersTable.vkLink
+    var link by UsersTable.link
 }
 
 object GroupsTable : IntIdTable("groups") {
-    val creatorId = integer("creator_id")
     val title = text("title")
-    val description = text("description")
-    val canPost = bool("can_post")
+    val creatorId = integer("creator_id")
+    val description = text("description").nullable()
+    val canPost = bool("can_post").default(false)
     val color = text("color").default("64B5F6").nullable()
     val image = text("image").nullable()
-    val vkLink = text("vk_link").nullable()
+    val link = text("link").nullable()
 }
 
 class GroupRow(id: EntityID<Int>) : IntEntity(id) {
@@ -52,17 +52,17 @@ class GroupRow(id: EntityID<Int>) : IntEntity(id) {
     var canPost by GroupsTable.canPost
     var color by GroupsTable.color
     var image by GroupsTable.image
-    var vkLink by GroupsTable.vkLink
+    var link by GroupsTable.link
 }
 
 object EventsTable : IntIdTable("events") {
     val title = text("title")
     val authorId = integer("author_id")
-    val description = text("description")
-    val placeId = integer("place_id")
+    val place = text("place")
     val datetime = long("datetime")
-    val images = text("images")
-    val links = text("links")
+    val duration = long("duration")
+    val description = text("description")
+    val link = text("link")
 }
 
 class EventRow(id: EntityID<Int>) : IntEntity(id) {
@@ -70,9 +70,9 @@ class EventRow(id: EntityID<Int>) : IntEntity(id) {
 
     var title by EventsTable.title
     var authorId by EventsTable.authorId
-    var description by EventsTable.description
-    var placeId by EventsTable.placeId
+    var place by EventsTable.place
     var datetime by EventsTable.datetime
-    var images by EventsTable.images
-    var links by EventsTable.links
+    var duration by EventsTable.duration
+    var description by EventsTable.description
+    var link by EventsTable.link
 }

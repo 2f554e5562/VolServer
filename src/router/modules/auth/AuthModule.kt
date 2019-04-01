@@ -41,7 +41,6 @@ fun Routing.authTokenCreateByLoginAndPassword(
     }
 
 fun Routing.authTokenCreateByRefreshToken(
-    json: ObjectMapper,
     tokenManager: TokenManager,
     volDatabase: DatabaseModule
 ) =

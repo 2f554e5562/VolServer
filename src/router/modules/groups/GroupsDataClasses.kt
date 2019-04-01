@@ -5,7 +5,7 @@ data class GroupCreateI(
 )
 
 data class GroupCreateO(
-    @JsonProperty("data") val data: GroupData
+    @JsonProperty("data") val data: GroupFullData
 )
 
 data class GroupsFindI(
@@ -15,18 +15,36 @@ data class GroupsFindI(
 )
 
 data class GroupsFindO(
-    @JsonProperty("groups") val groups: List<GroupData>
+    @JsonProperty("groups") val groups: List<GroupFullData>
+)
+
+data class GroupsEditI(
+    @JsonProperty("new_data") val newData: GroupDataEdit
+)
+
+data class GroupsEditO(
+    @JsonProperty("new_data") val newData: GroupFullData
 )
 
 
 data class GroupData(
     @JsonProperty("title") val title: String,
-    @JsonProperty("description") val description: String,
+    @JsonProperty("can_post") val canPost: Boolean,
+    @JsonProperty("image") val image: String?,
+    @JsonProperty("description") val description: String?,
+    @JsonProperty("link") val link: String?,
+    @JsonProperty("color") val color: String?
+)
+
+data class GroupFullData(
+    @JsonProperty("id") val id: Int,
+    @JsonProperty("title") val title: String,
+    @JsonProperty("description") val description: String?,
     @JsonProperty("can_post") val canPost: Boolean,
     @JsonProperty("color") val color: String?,
     @JsonProperty("image") val image: String?,
-    @JsonProperty("vk_link") val vkLink: String?,
-    @JsonProperty("creator_id") val creatorId: Int?
+    @JsonProperty("link") val link: String?,
+    @JsonProperty("creator_id") val creatorId: Int
 )
 
 data class GroupDataSearch(
@@ -34,6 +52,14 @@ data class GroupDataSearch(
     @JsonProperty("title") val title: String? = null,
     @JsonProperty("description") val description: String? = null,
     @JsonProperty("can_post") val canPost: Boolean? = null,
-    @JsonProperty("vk_link") val vkLink: String? = null,
+    @JsonProperty("link") val link: String? = null,
     @JsonProperty("creator_ids") val creatorIds: List<Int>? = null
+)
+
+data class GroupDataEdit(
+    @JsonProperty("title") val title: String? = null,
+    @JsonProperty("description") val description: String? = null,
+    @JsonProperty("color") val color: String? = null,
+    @JsonProperty("image") val image: String? = null,
+    @JsonProperty("link") val link: String? = null
 )

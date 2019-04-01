@@ -35,6 +35,14 @@ suspend fun PipelineContext<Unit, ApplicationCall>.respondOk(message: String) =
         message
     )
 
+suspend fun PipelineContext<Unit, ApplicationCall>.respondNotFound() =
+    call.respond(
+        HttpStatusCode.NotFound,
+        ErrorMessage(
+            Messages.e404
+        )
+    )
+
 suspend fun PipelineContext<Unit, ApplicationCall>.respondCreated(message: String) =
     call.respond(
         HttpStatusCode.Created,

@@ -13,7 +13,12 @@ import io.ktor.routing.routing
 import usersFind
 import usersProfileGet
 import TokenManager
+import eventsCreate
+import eventsEdit
+import eventsFind
+import groupsEdit
 import imageLoad
+import usersProfileEdit
 
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
@@ -23,12 +28,12 @@ fun Application.module() {
     val tokenManager = TokenManager()
     val json = jacksonObjectMapper()
 
-    volDatabase.connect()
+    volDatabase.connectRelational()
 
     routing {
         authTokenCreateByLoginAndPassword(json, tokenManager, volDatabase)
 
-        authTokenCreateByRefreshToken(json, tokenManager, volDatabase)
+        authTokenCreateByRefreshToken(tokenManager, volDatabase)
 
         authUsersCreate(json, tokenManager, volDatabase)
 
@@ -36,9 +41,19 @@ fun Application.module() {
 
         usersFind(json, tokenManager, volDatabase)
 
+        usersProfileEdit(json, tokenManager, volDatabase)
+
         groupsCreate(json, tokenManager, volDatabase)
 
+        groupsEdit(json, tokenManager, volDatabase)
+
         groupsFind(json, tokenManager, volDatabase)
+
+        eventsCreate(json, tokenManager, volDatabase)
+
+        eventsEdit(json, tokenManager, volDatabase)
+
+        eventsFind(json, tokenManager, volDatabase)
 
         imageUpload()
 

@@ -1,4 +1,7 @@
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.ktor.application.ApplicationCall
+import io.ktor.application.call
+import io.ktor.util.pipeline.PipelineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -42,5 +45,33 @@ suspend fun InputStream.copyToSuspend(
             bytesAfterYield += bytes
         }
         return@withContext bytesCopied
+    }
+}
+
+suspend inline fun PipelineContext<Unit, ApplicationCall>.checkPermission(
+    tokenManager: TokenManager,
+    volDatabase: DatabaseModule,
+    block: (token: Token, user: UserRow) -> Unit
+) {
+    val token = tokenManager.parseToken(call.request.headers["Access-Token"] ?: throw IllegalStateException())
+
+    val user = volDatabase.findUserById(token.userId)
+
+    if (user == null) {
+        respondUnauthorized()
+    } else {
+        val userToken = tokenManager.createToken(
+            AuthUserData(
+                user.id.value,
+                user.login,
+                user.password
+            )
+        )
+
+        if (token.toString() == userToken.toString()) {
+            block(token, user)
+        } else {
+            respondUnauthorized()
+        }
     }
 }
