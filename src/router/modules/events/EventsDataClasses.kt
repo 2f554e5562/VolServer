@@ -18,6 +18,17 @@ data class EventsFindO(
     @JsonProperty("events") val events: List<EventFullData>
 )
 
+data class EventsFindByUserI(
+    @JsonProperty("offset") val offset: Int,
+    @JsonProperty("amount") val amount: Int,
+    @JsonProperty("user_id") val userId: Int,
+    @JsonProperty("relation") val relation: Int
+)
+
+data class EventsFindByUserO(
+    @JsonProperty("events") val events: List<EventFullData>
+)
+
 data class EventsEditI(
     @JsonProperty("new_data") val newData: EventsDataEdit
 )
@@ -32,7 +43,7 @@ data class EventData(
     @JsonProperty("place") val place: String?,
     @JsonProperty("datetime") val datetime: Long?,
     @JsonProperty("duration") val duration: Long?,
-    @JsonProperty("description") val description: String,
+    @JsonProperty("description") val description: String?,
     @JsonProperty("link") val link: String?
 )
 
@@ -43,7 +54,7 @@ data class EventFullData(
     @JsonProperty("place") val place: String?,
     @JsonProperty("datetime") val datetime: Long?,
     @JsonProperty("duration") val duration: Long?,
-    @JsonProperty("description") val description: String,
+    @JsonProperty("description") val description: String?,
     @JsonProperty("link") val link: String?
 )
 

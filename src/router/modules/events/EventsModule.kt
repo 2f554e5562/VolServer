@@ -6,6 +6,7 @@ import io.ktor.routing.Routing
 import io.ktor.routing.post
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
+import java.lang.IllegalStateException
 
 fun Routing.eventsCreate(
     json: ObjectMapper,
@@ -90,6 +91,35 @@ fun Routing.eventsEdit(
                 } else {
                     respondNotFound()
                 }
+            }
+        } catch (e: Exception) {
+            respondBadRequest()
+        }
+    }
+
+fun Routing.eventsFindByUser(
+    json: ObjectMapper,
+    tokenManager: TokenManager,
+    volDatabase: DatabaseModule
+) =
+    post("/events/list/get/byUser") {
+        try {
+            val eventsFindI = json.readValue<EventsFindByUserI>(call.receive<ByteArray>())
+
+            val relation = when (eventsFindI.relation) {
+                0 -> "any"
+                1 -> "creatorOf"
+                2 -> "participantOf"
+
+                else -> throw IllegalStateException("Incorrect user -> event relation")
+            }
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                respondOk(
+                    EventsFindByUserO(
+                        volDatabase.findEventsByUser(eventsFindI.userId, eventsFindI.offset, eventsFindI.amount, relation)
+                    ).writeValueAsString()
+                )
             }
         } catch (e: Exception) {
             respondBadRequest()

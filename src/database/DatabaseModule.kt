@@ -4,10 +4,9 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.neo4j.driver.v1.AuthTokens
 import org.neo4j.driver.v1.GraphDatabase
-import org.w3c.dom.Node
 
 class DatabaseModule {
-    val serverUrl = "194.1.239.114"
+    private val serverUrl = "194.1.239.114"
 
     private fun connectGraph(uri: String, user: String, password: String) =
         GraphDatabase.driver(uri, AuthTokens.basic(user, password))
@@ -27,30 +26,78 @@ class DatabaseModule {
         }
     }
 
+    private fun NodeItem.findRelationNodes(relation: String): List<Int> {
+        return driver.session().readTransaction { transaction ->
+            val relationQuery =
+                if (relation == "any")
+                    "[$relation]"
+                else
+                    "[$relation: ${relation.capitalize()}]"
+
+            val query = "MATCH ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(", ")} }) - $relationQuery -> (otherNode) RETURN otherNode"
+            println(query)
+
+            return@readTransaction transaction.run(query).list { record ->
+                return@list record["otherNode"]["id"].asInt()
+            }
+        }
+    }
+
     private fun NodeItem.createNewGraphNode() {
         driver.session().readTransaction { transaction ->
-            transaction.apply {
-                val query = "CREATE ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(", ") } })"
-                println(query)
-                run(query)
-            }
+            val query =
+                "CREATE ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                    ", "
+                )} })"
+            println(query)
+
+            return@readTransaction transaction.run(query)
         }
     }
 
     private fun NodeItem.mergeGraphNodes(relation: String, mergeWith: NodeItem) {
         driver.session().readTransaction { transaction ->
-            transaction.apply {
-                val query = "MATCH ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(", ") } }), (${mergeWith.nodeName}: ${mergeWith.nodeName.capitalize()} { ${mergeWith.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(", ") } }) MERGE (($nodeName) - [$relation: ${relation.capitalize()}] -> (${mergeWith.nodeName}))"
-                println(query)
-                run(query)
-            }
+            val query =
+                "MATCH ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                    ", "
+                )} }), (${mergeWith.nodeName}: ${mergeWith.nodeName.capitalize()} { ${mergeWith.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                    ", "
+                )} }) MERGE (($nodeName) - [$relation: ${relation.capitalize()}] -> (${mergeWith.nodeName}))"
+            println(query)
+
+            return@readTransaction transaction.run(query)
+        }
+    }
+
+    private fun NodeItem.deleteGraphNode() {
+        driver.session().readTransaction { transaction ->
+            val query =
+                "MATCH ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                    ", "
+                )} }) DETACH DELETE $nodeName"
+            println(query)
+
+            return@readTransaction transaction.run(query)
+        }
+    }
+
+    private fun NodeItem.deleteRelation(relation: String, otherNode: NodeItem) {
+        driver.session().readTransaction { transaction ->
+            val query =
+                "MATCH ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                    ", "
+                )} }) - [$relation: ${relation.capitalize()}] -> (${otherNode.nodeName}: ${otherNode.nodeName.capitalize()} { ${otherNode.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                    ", "
+                )} }) DELETE $relation"
+            println(query)
+            return@readTransaction transaction.run(query)
         }
     }
 
 
     fun createUser(user: UsersCreateI): UserRow = transaction {
         if (UserRow.find { UsersTable.login eq user.login.trimAllSpaces() }.count() == 0) {
-            val newUser =  UserRow.new {
+            val newUser = UserRow.new {
                 login = user.login.trimAllSpaces()
                 password = user.password.trimAllSpaces()
                 firstName = user.data.firstName.trimAllSpaces()
@@ -286,22 +333,26 @@ class DatabaseModule {
         val newEvent = EventRow.new {
             title = event.title.trimAllSpaces()
             authorId = userId
-            description = event.description.trimAllSpaces()
 
             event.place?.let { place = it.trimAllSpaces() }
             event.datetime?.let { datetime = it }
             event.duration?.let { duration = it }
+            event.description?.let { description = it.trimAllSpaces() }
             event.link?.let { link = it.trimAllSpaces() }
         }
 
         val newEventNode = NodeItem(
             "event",
-            mapOf(
-                "id" to newEvent.id.value.toString()
-            )
+            mapOf("id" to newEvent.id.value.toString())
+        )
+
+        val creatorNode = NodeItem(
+            "user",
+            mapOf("id" to userId.toString())
         )
 
         newEventNode.createNewGraphNode()
+        creatorNode.mergeGraphNodes("creatorOf", newEventNode)
 
         return@transaction newEvent
     }
@@ -384,6 +435,22 @@ class DatabaseModule {
             )
         }
     }
+
+    fun findEventsByUser(userId: Int, offset: Int, amount: Int, relation: String): List<EventFullData> =
+        transaction {
+            val userNode = NodeItem(
+                "user",
+                mapOf("id" to userId.toString())
+            )
+
+            val relationNodes = userNode.findRelationNodes(relation)
+
+            return@transaction findEventsByParameters(
+                EventDataSearch(relationNodes),
+                offset,
+                amount
+            )
+        }
 }
 
 data class NodeItem(

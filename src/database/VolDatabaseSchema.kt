@@ -58,11 +58,11 @@ class GroupRow(id: EntityID<Int>) : IntEntity(id) {
 object EventsTable : IntIdTable("events") {
     val title = text("title")
     val authorId = integer("author_id")
-    val place = text("place")
-    val datetime = long("datetime")
-    val duration = long("duration")
-    val description = text("description")
-    val link = text("link")
+    val place = text("place").nullable()
+    val datetime = long("datetime").nullable()
+    val duration = long("duration").nullable()
+    val description = text("description").nullable()
+    val link = text("link").nullable()
 }
 
 class EventRow(id: EntityID<Int>) : IntEntity(id) {

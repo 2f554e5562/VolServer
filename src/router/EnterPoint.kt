@@ -16,6 +16,7 @@ import TokenManager
 import eventsCreate
 import eventsEdit
 import eventsFind
+import eventsFindByUser
 import groupsEdit
 import imageLoad
 import usersProfileEdit
@@ -54,6 +55,8 @@ fun Application.module() {
         eventsEdit(json, tokenManager, volDatabase)
 
         eventsFind(json, tokenManager, volDatabase)
+
+        eventsFindByUser(json, tokenManager, volDatabase)
 
         imageUpload()
 
