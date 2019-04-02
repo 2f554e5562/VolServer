@@ -1,4 +1,5 @@
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import database.GraphNode
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.util.pipeline.PipelineContext
@@ -9,6 +10,7 @@ import kotlinx.coroutines.yield
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.MessageDigest
+import kotlin.reflect.KParameter
 
 fun String.getHashSHA256(): String {
     val md = MessageDigest.getInstance("SHA-256")
@@ -51,7 +53,7 @@ suspend fun InputStream.copyToSuspend(
 suspend inline fun PipelineContext<Unit, ApplicationCall>.checkPermission(
     tokenManager: TokenManager,
     volDatabase: DatabaseModule,
-    block: (token: Token, user: UserRow) -> Unit
+    block: (token: Token, user: UserFullData) -> Unit
 ) {
     val token = tokenManager.parseToken(call.request.headers["Access-Token"] ?: throw IllegalStateException())
 
@@ -60,6 +62,19 @@ suspend inline fun PipelineContext<Unit, ApplicationCall>.checkPermission(
     if (user == null) {
         respondUnauthorized()
     } else {
+        val userFullData = UserFullData(
+            user.id.value,
+            user.firstName,
+            user.lastName,
+            user.middleName,
+            user.birthday,
+            user.about,
+            user.phoneNumber,
+            user.image,
+            user.email,
+            user.link
+        )
+
         val userToken = tokenManager.createToken(
             AuthUserData(
                 user.id.value,
@@ -69,7 +84,7 @@ suspend inline fun PipelineContext<Unit, ApplicationCall>.checkPermission(
         )
 
         if (token.toString() == userToken.toString()) {
-            block(token, user)
+            block(token, userFullData)
         } else {
             respondUnauthorized()
         }

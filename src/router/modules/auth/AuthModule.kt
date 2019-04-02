@@ -36,6 +36,7 @@ fun Routing.authTokenCreateByLoginAndPassword(
                 respondUnauthorized()
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             respondBadRequest()
         }
     }

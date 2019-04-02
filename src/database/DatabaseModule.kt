@@ -21,12 +21,18 @@ class DatabaseModule {
             password = "2f4e623830"
         )
 
+        data class A(
+            val f1: String,
+            val f2: String,
+            val f3: String?
+        )
+
         transaction {
             SchemaUtils.create(UsersTable, EventsTable, GroupsTable)
         }
     }
 
-    private fun NodeItem.findRelationNodes(relation: String): List<Int> {
+    private fun GraphNode.findRelationNodes(relation: String): List<Int> {
         return driver.session().readTransaction { transaction ->
             val relationQuery =
                 if (relation == "any")
@@ -34,59 +40,70 @@ class DatabaseModule {
                 else
                     "[$relation: ${relation.capitalize()}]"
 
-            val query = "MATCH ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(", ")} }) - $relationQuery -> (otherNode) RETURN otherNode"
+            val query =
+                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                    ", "
+                )} }) - $relationQuery -> (otherNode) RETURN otherNode"
             println(query)
 
-            return@readTransaction transaction.run(query).list { record ->
+            val result = transaction.run(query)
+
+            return@readTransaction result.list { record ->
                 return@list record["otherNode"]["id"].asInt()
             }
         }
     }
 
-    private fun NodeItem.createNewGraphNode() {
+    private fun GraphNode.createNewGraphNode() {
         driver.session().readTransaction { transaction ->
             val query =
-                "CREATE ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                "CREATE ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
                     ", "
-                )} })"
+                )} } RETURN ($title))"
+            println(query)
+
+            val result = transaction.run(query).list { record ->
+                record[title].asMap()
+            }
+
+            println(result)
+
+            return@readTransaction result
+        }
+    }
+
+    private fun GraphNode.mergeGraphNodes(relation: String, mergeWith: GraphNode) {
+        driver.session().readTransaction { transaction ->
+            val query =
+                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                    ", "
+                )} }), (${mergeWith.title}: ${mergeWith.title.capitalize()} { ${mergeWith.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                    ", "
+                )} }) MERGE (($title) - [$relation: ${relation.capitalize()}] -> (${mergeWith.title}))"
             println(query)
 
             return@readTransaction transaction.run(query)
         }
     }
 
-    private fun NodeItem.mergeGraphNodes(relation: String, mergeWith: NodeItem) {
+    private fun GraphNode.deleteGraphNode() {
         driver.session().readTransaction { transaction ->
             val query =
-                "MATCH ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
                     ", "
-                )} }), (${mergeWith.nodeName}: ${mergeWith.nodeName.capitalize()} { ${mergeWith.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-                    ", "
-                )} }) MERGE (($nodeName) - [$relation: ${relation.capitalize()}] -> (${mergeWith.nodeName}))"
+                )} }) DETACH DELETE $title"
             println(query)
 
             return@readTransaction transaction.run(query)
         }
     }
 
-    private fun NodeItem.deleteGraphNode() {
+    private fun GraphNode.deleteRelation(relation: String, otherNode: GraphNode) {
         driver.session().readTransaction { transaction ->
             val query =
-                "MATCH ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
                     ", "
-                )} }) DETACH DELETE $nodeName"
-            println(query)
-
-            return@readTransaction transaction.run(query)
-        }
-    }
-
-    private fun NodeItem.deleteRelation(relation: String, otherNode: NodeItem) {
-        driver.session().readTransaction { transaction ->
-            val query =
-                "MATCH ($nodeName: ${nodeName.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-                    ", "
-                )} }) - [$relation: ${relation.capitalize()}] -> (${otherNode.nodeName}: ${otherNode.nodeName.capitalize()} { ${otherNode.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+                )} }) - [$relation: ${relation.capitalize()}] -> (${otherNode.title}: ${otherNode.title.capitalize()} { ${otherNode.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
                     ", "
                 )} }) DELETE $relation"
             println(query)
@@ -121,12 +138,7 @@ class DatabaseModule {
                     link = user.data.link.trimAllSpaces()
             }
 
-            val newUserNode = NodeItem(
-                "user",
-                mapOf("id" to newUser.id.value.toString())
-            )
-
-            newUserNode.createNewGraphNode()
+            user.data.toNode().createNewGraphNode()
 
             return@transaction newUser
         } else {
@@ -248,12 +260,12 @@ class DatabaseModule {
                 group.link?.let { link = it.trimAllSpaces() }
             }
 
-            val newGroupNode = NodeItem(
+            val newGroupNode = GraphNode(
                 "group",
                 mapOf("id" to newGroup.id.value.toString())
             )
 
-            val creatorNode = NodeItem(
+            val creatorNode = GraphNode(
                 "user",
                 mapOf("id" to userId.toString())
             )
@@ -341,12 +353,12 @@ class DatabaseModule {
             event.link?.let { link = it.trimAllSpaces() }
         }
 
-        val newEventNode = NodeItem(
+        val newEventNode = GraphNode(
             "event",
             mapOf("id" to newEvent.id.value.toString())
         )
 
-        val creatorNode = NodeItem(
+        val creatorNode = GraphNode(
             "user",
             mapOf("id" to userId.toString())
         )
@@ -436,24 +448,18 @@ class DatabaseModule {
         }
     }
 
-    fun findEventsByUser(userId: Int, offset: Int, amount: Int, relation: String): List<EventFullData> =
-        transaction {
-            val userNode = NodeItem(
-                "user",
-                mapOf("id" to userId.toString())
-            )
+    fun findEventsByUser(userId: Int, offset: Int, amount: Int, relation: String): List<EventFullData> = transaction {
+        val userNode = GraphNode(
+            "user",
+            mapOf("id" to userId.toString())
+        )
 
-            val relationNodes = userNode.findRelationNodes(relation)
+        val relationNodes = userNode.findRelationNodes(relation)
 
-            return@transaction findEventsByParameters(
-                EventDataSearch(relationNodes),
-                offset,
-                amount
-            )
-        }
+        return@transaction findEventsByParameters(
+            EventDataSearch(relationNodes),
+            offset,
+            amount
+        )
+    }
 }
-
-data class NodeItem(
-    val nodeName: String,
-    val nodeParameters: Map<String, String>
-)

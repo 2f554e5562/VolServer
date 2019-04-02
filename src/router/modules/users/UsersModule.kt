@@ -4,8 +4,6 @@ import io.ktor.application.call
 import io.ktor.request.receive
 import io.ktor.routing.Routing
 import io.ktor.routing.post
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.selectAll
 
 fun Routing.usersProfileGet(
     json: ObjectMapper,
@@ -14,23 +12,10 @@ fun Routing.usersProfileGet(
 ) =
     post("/users/profile/get") {
         try {
-            val token = tokenManager.parseToken(call.request.headers["Access-Token"] ?: throw IllegalStateException())
-
             checkPermission(tokenManager, volDatabase) { token, user ->
                 respondOk(
                     UsersProfileGetO(
-                        UserFullData(
-                            user.id.value,
-                            user.firstName,
-                            user.lastName,
-                            user.middleName,
-                            user.birthday,
-                            user.about,
-                            user.phoneNumber,
-                            user.image,
-                            user.email,
-                            user.link
-                        )
+                        user
                     ).writeValueAsString()
                 )
             }

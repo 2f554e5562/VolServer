@@ -3,7 +3,6 @@ import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.respond
 import io.ktor.util.pipeline.PipelineContext
-import utils.ErrorMessage
 
 suspend fun PipelineContext<Unit, ApplicationCall>.respondBadRequest() =
     call.respond(

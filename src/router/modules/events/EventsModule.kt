@@ -19,7 +19,7 @@ fun Routing.eventsCreate(
 
             checkPermission(tokenManager, volDatabase) { token, user ->
                 val event = volDatabase.createEvent(
-                    eventCreateI.data, user.id.value
+                    eventCreateI.data, user.id
                 )
 
                 respondCreated(
@@ -122,6 +122,7 @@ fun Routing.eventsFindByUser(
                 )
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             respondBadRequest()
         }
     }

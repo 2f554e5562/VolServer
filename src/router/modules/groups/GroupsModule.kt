@@ -18,7 +18,7 @@ fun Routing.groupsCreate(
 
             checkPermission(tokenManager, volDatabase) { token, user ->
                 val group = volDatabase.createGroup(
-                    groupCreateI.data, user.id.value
+                    groupCreateI.data, user.id
                 )
 
                 respondCreated(
