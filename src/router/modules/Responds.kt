@@ -39,7 +39,7 @@ suspend fun PipelineContext<Unit, ApplicationCall>.respondNotFound() =
         HttpStatusCode.NotFound,
         ErrorMessage(
             Messages.e404
-        )
+        ).writeValueAsString()
     )
 
 suspend fun PipelineContext<Unit, ApplicationCall>.respondCreated(message: String = "") =

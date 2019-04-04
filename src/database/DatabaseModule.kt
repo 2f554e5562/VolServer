@@ -1,8 +1,5 @@
 import database.GroupAlreadyExists
 import database.UserAlreadyExists
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 
 class DatabaseModule {
     private val volGraphDatabase = VolGraphDatabase
@@ -72,66 +69,83 @@ class DatabaseModule {
         }
     }
 
-    fun findUsersByParameters(parameters: UserDataSearch, offset: Int, amount: Int) = transaction {
-        val query = UsersTable.selectAll()
-
-        parameters.apply {
-            ids?.let { ids ->
-                query.andWhere { UsersTable.id inList ids }
+    fun findUsersByParameters(parameters: UserDataSearch, offset: Long, amount: Long): List<UserData> {
+        return volGraphDatabase.findNode<UserNode>(amount, offset) { filter ->
+            parameters.ids?.let {
+                filter.add { className ->
+                    "ID($className)" inList it
+                }
             }
 
-            firstName?.let { firstName ->
-                query.andWhere { UsersTable.firstName like "%$firstName%" }
+            parameters.firstName?.let {
+                filter.add { className ->
+                    "$className.firstName" like it
+                }
             }
 
-            lastName?.let { lastName ->
-                query.andWhere { UsersTable.lastName like "%$lastName%" }
+            parameters.lastName?.let {
+                filter.add { className ->
+                    "$className.lastName" like it
+                }
             }
 
-            middleName?.let { middleName ->
-                query.andWhere { UsersTable.middleName like "%$middleName%" }
+            parameters.middleName?.let {
+                filter.add { className ->
+                    "$className.middleName" like it
+                }
             }
 
-            birthdayMin?.let { birthdayMin ->
-                query.andWhere { UsersTable.birthday greaterEq birthdayMin }
+            parameters.birthdayMin?.let {
+                filter.add { className ->
+                    "$className.birthday" greaterOrEquals it
+                }
             }
 
-            birthdayMax?.let { birthdayMax ->
-                query.andWhere { UsersTable.birthday lessEq birthdayMax }
+            parameters.birthdayMax?.let {
+                filter.add { className ->
+                    "$className.birthday" lessOrEquals it
+                }
             }
 
-            about?.let { about ->
-                query.andWhere { UsersTable.about like "%$about%" }
+            parameters.about?.let {
+                filter.add { className ->
+                    "$className.about" like it
+                }
             }
 
-            phoneNumber?.let { phoneNumber ->
-                query.andWhere { UsersTable.phoneNumber like "%$phoneNumber%" }
+            parameters.phoneNumber?.let {
+                filter.add { className ->
+                    "$className.phoneNumber" like it
+                }
             }
 
-            email?.let { email ->
-                query.andWhere { UsersTable.email like "%$email%" }
+            parameters.email?.let {
+                filter.add { className ->
+                    "$className.email" like it
+                }
             }
 
-            link?.let { vkLink ->
-                query.andWhere { UsersTable.link like "%$vkLink%" }
+            parameters.link?.let {
+                filter.add { className ->
+                    "$className.link" like it
+                }
             }
-        }
-
-        query.limit(amount, offset).map {
+        }.map {
             UserData(
-                it[UsersTable.id].value.toLong(),
-                it[UsersTable.firstName],
-                it[UsersTable.lastName],
-                it[UsersTable.middleName],
-                it[UsersTable.birthday],
-                it[UsersTable.about],
-                it[UsersTable.phoneNumber],
-                it[UsersTable.image],
-                it[UsersTable.email],
-                it[UsersTable.link]
+                it.id,
+                it.firstName,
+                it.lastName,
+                it.middleName,
+                it.birthday,
+                it.about,
+                it.phoneNumber,
+                it.image,
+                it.email,
+                it.link
             )
         }
     }
+
 
     fun createGroup(group: GroupCreateData, userId: Long): GroupNode {
         val groups = volGraphDatabase.findNode<GroupNode> {
@@ -149,7 +163,7 @@ class DatabaseModule {
                 creatorId = userId
             }
 
-            volGraphDatabase.newRelation<CreatorRelationship>(userId, groupNode)
+            volGraphDatabase.newRelationship<CreatorRelationship>(userId, groupNode.id)
 
             return groupNode
         } else {
@@ -157,8 +171,11 @@ class DatabaseModule {
         }
     }
 
-    fun editGroup(group: GroupDataEdit, groupId: Long): GroupFullData? {
-        return volGraphDatabase.editNode<GroupNode>(groupId) {
+    fun editGroup(group: GroupDataEdit, groupId: Long, userId: Long): GroupFullData? {
+        return volGraphDatabase.editNode<GroupNode>(groupId) {filter ->
+            filter.add { className ->
+                "$className.creatorId = $userId"
+            }
             group.title?.let { title = it.trimAllSpaces() }
             group.description?.let { description = it.trimAllSpaces() }
             group.color?.let { color = it.trimAllSpaces() }
@@ -177,33 +194,38 @@ class DatabaseModule {
         }
     }
 
-    fun findGroupsByParameters(parameters: GroupDataSearch, offset: Int, amount: Int): List<GroupFullData> {
-        return volGraphDatabase.findNode<GroupNode> { filter ->
+    fun findGroupsByParameters(parameters: GroupDataSearch, offset: Long, amount: Long): List<GroupFullData> {
+        return volGraphDatabase.findNode<GroupNode>(amount, offset) { filter ->
             parameters.ids?.let {
                 filter.add { className ->
                     "ID($className)" inList it
                 }
             }
+
             parameters.title?.let {
                 filter.add { className ->
                     "$className.title" like it
                 }
             }
+
             parameters.description?.let {
                 filter.add { className ->
                     "$className.description" like it
                 }
             }
+
             parameters.canPost?.let {
                 filter.add { className ->
                     "$className.canPost" equals it
                 }
             }
+
             parameters.link?.let {
                 filter.add { className ->
                     "$className.link" like it
                 }
             }
+
             parameters.creatorIds?.let {
                 filter.add { className ->
                     "$className.creatorId" inList it
@@ -222,6 +244,23 @@ class DatabaseModule {
         }
     }
 
+    fun findGroupsByCreator(creatorId: Long, offset: Long, amount: Long): List<GroupFullData> {
+        return volGraphDatabase.findRelationshipNode<GroupNode, CreatorRelationship>(creatorId,amount, offset) { filter ->
+
+        }.map {
+            GroupFullData(
+                it.id,
+                it.title,
+                it.description,
+                it.color,
+                it.image,
+                it.link,
+                it.creatorId
+            )
+        }
+    }
+
+
     fun createEvent(event: EventCreateData, userId: Long): EventNode {
         val events = volGraphDatabase.findNode<EventNode> {
             title = event.title.trimAllSpaces()
@@ -229,6 +268,7 @@ class DatabaseModule {
 
         if (events.isEmpty()) {
             val eventNode = volGraphDatabase.newNode<EventNode> {
+                creatorId = userId
                 title = event.title
                 place = event.place
                 datetime = event.datetime
@@ -237,7 +277,7 @@ class DatabaseModule {
                 link = event.link
             }
 
-            volGraphDatabase.newRelation<CreatorRelationship>(userId, eventNode)
+            volGraphDatabase.newRelationship<CreatorRelationship>(userId, eventNode.id)
 
             return eventNode
         } else {
@@ -245,21 +285,19 @@ class DatabaseModule {
         }
     }
 
-    fun editEvent(event: EventsDataEdit, eventId: Int): EventFullData? = transaction {
-        val eventData = EventRow.findById(eventId)
-
-        eventData?.apply {
+    fun editEvent(event: EventsDataEdit, eventId: Long): EventFullData? {
+        return volGraphDatabase.editNode<EventNode>(eventId) {
             event.title?.let { title = it.trimAllSpaces() }
-            event.description?.let { description = it.trimAllSpaces() }
+            event.place?.let { place = it.trimAllSpaces() }
             event.datetime?.let { datetime = it }
             event.duration?.let { duration = it }
-            event.place?.let { place = it.trimAllSpaces() }
+            event.description?.let { description = it.trimAllSpaces() }
             event.link?.let { link = it.trimAllSpaces() }
-        }?.let {
+        }.firstOrNull()?.let {
             EventFullData(
-                it.id.value,
+                it.id,
                 it.title,
-                it.authorId,
+                it.creatorId,
                 it.place,
                 it.datetime,
                 it.duration,
@@ -269,57 +307,77 @@ class DatabaseModule {
         }
     }
 
-    fun findEventsByParameters(parameters: EventDataSearch, offset: Int, amount: Int) = transaction {
-        val query = EventsTable.selectAll()
-
-        parameters.apply {
-            ids?.let { ids ->
-                query.andWhere { EventsTable.id inList ids }
+    fun findEventsByParameters(parameters: EventDataSearch, offset: Long, amount: Long): List<EventFullData> {
+        return volGraphDatabase.findNode<EventNode>(amount, offset) { filter ->
+            parameters.ids?.let {
+                filter.add { className ->
+                    "ID($className)" inList it
+                }
             }
 
-            title?.let { title ->
-                query.andWhere { EventsTable.title like "%$title%" }
+            parameters.title?.let {
+                filter.add { className ->
+                    "$className.title" like it
+                }
             }
 
-            authorIds?.let { authorIds ->
-                query.andWhere { EventsTable.authorId inList authorIds }
+            parameters.creatorIds?.let {
+                filter.add { className ->
+                    "$className.creatorId" inList it
+                }
             }
 
-            place?.let { place ->
-                query.andWhere { EventsTable.place like "%$place%" }
+            parameters.place?.let {
+                filter.add { className ->
+                    "$className.place" like it
+                }
             }
 
-            datetimeMin?.let { datetimeMin ->
-                query.andWhere { EventsTable.datetime greaterEq datetimeMin }
+            parameters.datetimeMin?.let {
+                filter.add { className ->
+                    "$className.datetime" greaterOrEquals it
+                }
             }
 
-            datetimeMax?.let { datetimeMax ->
-                query.andWhere { EventsTable.datetime lessEq datetimeMax }
+            parameters.datetimeMax?.let {
+                filter.add { className ->
+                    "$className.datetime" lessOrEquals it
+                }
             }
 
-            durationMin?.let { durationMin ->
-                query.andWhere { EventsTable.duration greaterEq durationMin }
+            parameters.durationMin?.let {
+                filter.add { className ->
+                    "$className.duration" greaterOrEquals it
+                }
             }
 
-            durationMax?.let { durationMax ->
-                query.andWhere { EventsTable.duration lessEq durationMax }
+            parameters.durationMax?.let {
+                filter.add { className ->
+                    "$className.duration" lessOrEquals it
+                }
             }
 
-            description?.let { description ->
-                query.andWhere { GroupsTable.description like "%$description%" }
+            parameters.description?.let {
+                filter.add { className ->
+                    "$className.description" like it
+                }
             }
-        }
 
-        query.limit(amount, offset).map {
+            parameters.link?.let {
+                filter.add { className ->
+                    "$className.link" like it
+                }
+            }
+        }.map {
             EventFullData(
-                it[EventsTable.id].value,
-                it[EventsTable.title],
-                it[EventsTable.authorId],
-                it[EventsTable.place],
-                it[EventsTable.datetime],
-                it[EventsTable.duration],
-                it[EventsTable.description],
-                it[EventsTable.link]
+                it.id,
+                it.title,
+                it.creatorId,
+                it.place,
+                it.datetime,
+                it.duration,
+                it.description,
+                it.link
             )
         }
     }

@@ -9,8 +9,8 @@ data class EventCreateO(
 )
 
 data class EventsFindI(
-    @JsonProperty("offset") val offset: Int,
-    @JsonProperty("amount") val amount: Int,
+    @JsonProperty("offset") val offset: Long,
+    @JsonProperty("amount") val amount: Long,
     @JsonProperty("parameters") val parameters: EventDataSearch
 )
 
@@ -30,6 +30,7 @@ data class EventsFindByUserO(
 )
 
 data class EventsEditI(
+    @JsonProperty("id") val id: Long,
     @JsonProperty("new_data") val newData: EventsDataEdit
 )
 
@@ -48,9 +49,9 @@ data class EventCreateData(
 )
 
 data class EventFullData(
-    @JsonProperty("id") val id: Int,
+    @JsonProperty("id") val id: Long,
     @JsonProperty("title") val title: String,
-    @JsonProperty("author_id") val authorId: Int,
+    @JsonProperty("creator_id") val creatorId: Long,
     @JsonProperty("place") val place: String?,
     @JsonProperty("datetime") val datetime: Long?,
     @JsonProperty("duration") val duration: Long?,
@@ -61,13 +62,14 @@ data class EventFullData(
 data class EventDataSearch(
     @JsonProperty("ids") val ids: List<Int>? = null,
     @JsonProperty("title") val title: String? = null,
-    @JsonProperty("author_ids") val authorIds: List<Int>? = null,
+    @JsonProperty("creator_ids") val creatorIds: List<Int>? = null,
     @JsonProperty("place") val place: String? = null,
     @JsonProperty("datetime_min") val datetimeMin: Long? = null,
     @JsonProperty("datetime_max") val datetimeMax: Long? = null,
     @JsonProperty("duration_min") val durationMin: Long? = null,
     @JsonProperty("duration_max") val durationMax: Long? = null,
-    @JsonProperty("description") val description: String? = null
+    @JsonProperty("description") val description: String? = null,
+    @JsonProperty("link") val link: String? = null
 )
 
 data class EventsDataEdit(

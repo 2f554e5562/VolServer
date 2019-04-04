@@ -21,8 +21,8 @@ class TokenManager {
             (authUserData.id.toString() +
                     authUserData.login +
                     authUserData.password +
-                    SimpleDateFormat("yyyyMMddHHmm")
-                        .format(Date())).getHashSHA256()
+                    SimpleDateFormat("yyyyMMddHHmm").format(Date())
+                    ).getHashSHA256()
 
         return Token(authUserData.id, stamp)
     }

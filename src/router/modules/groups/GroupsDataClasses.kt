@@ -9,8 +9,8 @@ data class GroupCreateO(
 )
 
 data class GroupsFindI(
-    @JsonProperty("offset") val offset: Int,
-    @JsonProperty("amount") val amount: Int,
+    @JsonProperty("offset") val offset: Long,
+    @JsonProperty("amount") val amount: Long,
     @JsonProperty("parameters") val parameters: GroupDataSearch
 )
 
@@ -19,6 +19,7 @@ data class GroupsFindO(
 )
 
 data class GroupsEditI(
+    @JsonProperty("id") val id: Long,
     @JsonProperty("new_data") val newData: GroupDataEdit
 )
 

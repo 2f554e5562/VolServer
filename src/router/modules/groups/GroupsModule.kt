@@ -5,6 +5,7 @@ import io.ktor.application.call
 import io.ktor.request.receive
 import io.ktor.routing.Routing
 import io.ktor.routing.post
+import java.lang.IllegalStateException
 
 
 fun Routing.groupsCreate(
@@ -65,37 +66,32 @@ fun Routing.groupsFind(
             respondBadRequest()
         }
     }
-//
-//
-//fun Routing.groupsEdit(
-//    json: ObjectMapper,
-//    tokenManager: TokenManager,
-//    volDatabase: DatabaseModule
-//) =
-//    post("/groups/{id}/edit") {
-//        try {
-//            val groupsEditI = json.readValue<GroupsEditI>(call.receive<ByteArray>())
-//
-//            checkPermission(tokenManager, volDatabase) { token, user ->
-//                val groupId = call.request.headers["id"]?.toInt()
-//
-//                if (groupId != null) {
-//                    val groupData = volDatabase.editGroup(groupsEditI.newData, groupId)
-//
-//                    if (groupData != null) {
-//                        respondOk(
-//                            GroupsEditO(
-//                                groupData
-//                            ).writeValueAsString()
-//                        )
-//                    } else {
-//                        respondNotFound()
-//                    }
-//                } else {
-//                    respondNotFound()
-//                }
-//            }
-//        } catch (e: Exception) {
-//            respondBadRequest()
-//        }
-//    }
+
+
+fun Routing.groupsEdit(
+    json: ObjectMapper,
+    tokenManager: TokenManager,
+    volDatabase: DatabaseModule
+) =
+    post("/groups/edit") {
+        try {
+            val groupsEditI = json.readValue<GroupsEditI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                val groupData = volDatabase.editGroup(groupsEditI.newData, groupsEditI.id, user.id)
+
+                if (groupData != null) {
+                    respondOk(
+                        GroupsEditO(
+                            groupData
+                        ).writeValueAsString()
+                    )
+                } else {
+                    respondNotFound()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }

@@ -42,13 +42,15 @@ fun Routing.authTokenCreateByLoginAndPassword(
     }
 
 fun Routing.authTokenCreateByRefreshToken(
+    json: ObjectMapper,
     tokenManager: TokenManager,
     volDatabase: DatabaseModule
 ) =
     post("/auth/token/create/byRefreshToken") {
         try {
-            val refreshToken =
-                tokenManager.parseToken(call.request.headers["Refresh-Token"] ?: throw IllegalStateException())
+            val createTokenByRefreshTokenI = json.readValue<CreateTokenByRefreshTokenI>(call.receive<ByteArray>())
+
+            val refreshToken = tokenManager.parseToken(createTokenByRefreshTokenI.refreshToken)
 
             val user = volDatabase.findUserById(refreshToken.userId)
 
@@ -80,6 +82,7 @@ fun Routing.authTokenCreateByRefreshToken(
                 }
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             respondBadRequest()
         }
     }

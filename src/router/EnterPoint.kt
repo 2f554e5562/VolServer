@@ -11,7 +11,11 @@ import io.ktor.routing.routing
 import usersFind
 import usersProfileGet
 import TokenManager
+import eventsCreate
+import eventsEdit
+import eventsFind
 import groupsCreate
+import groupsEdit
 import groupsFind
 import imageLoad
 import usersProfileEdit
@@ -27,7 +31,7 @@ fun Application.module() {
     routing {
         authTokenCreateByLoginAndPassword(json, tokenManager, volDatabase)
 
-        authTokenCreateByRefreshToken(tokenManager, volDatabase)
+        authTokenCreateByRefreshToken(json, tokenManager, volDatabase)
 
         authUsersCreate(json, tokenManager, volDatabase)
 
@@ -39,16 +43,16 @@ fun Application.module() {
 
         groupsCreate(json, tokenManager, volDatabase)
 
-//        groupsEdit(json, tokenManager, volDatabase)
-//
+        groupsEdit(json, tokenManager, volDatabase)
+
         groupsFind(json, tokenManager, volDatabase)
-//
-//        eventsCreate(json, tokenManager, volDatabase)
-//
-//        eventsEdit(json, tokenManager, volDatabase)
-//
-//        eventsFind(json, tokenManager, volDatabase)
-//
+
+        eventsCreate(json, tokenManager, volDatabase)
+
+        eventsEdit(json, tokenManager, volDatabase)
+
+        eventsFind(json, tokenManager, volDatabase)
+
 //        eventsFindByUser(json, tokenManager, volDatabase)
 
         imageUpload()

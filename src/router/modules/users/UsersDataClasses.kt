@@ -7,8 +7,8 @@ data class UsersProfileGetO(
 )
 
 data class UsersFindI(
-    @JsonProperty("amount") val amount: Int,
-    @JsonProperty("offset") val offset: Int,
+    @JsonProperty("offset") val offset: Long,
+    @JsonProperty("amount") val amount: Long,
     @JsonProperty("parameters") val parameters: UserDataSearch
 )
 

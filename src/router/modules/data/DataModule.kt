@@ -28,7 +28,8 @@ fun Routing.imageUpload() =
                     file.name
                 ).writeValueAsString()
             )
-        } catch (error: Exception) {
+        } catch (e: Exception) {
+            e.printStackTrace()
             respondBadRequest()
         }
     }
@@ -54,7 +55,8 @@ fun Routing.imageLoad(json: ObjectMapper) =
                 file.readBytes(),
                 ContentType.Image.Any
             )
-        } catch (error: Exception) {
+        } catch (e: Exception) {
+            e.printStackTrace()
             respondBadRequest()
         }
     }

@@ -13,7 +13,7 @@ class NotNullable<T : Any> {
     }
 }
 
-class Nullable<T : Any> {
+class Nullable<T : Any?> {
     private var value: T? = null
 
     operator fun getValue(thisRef: Any?, property: KProperty<*>): T? {

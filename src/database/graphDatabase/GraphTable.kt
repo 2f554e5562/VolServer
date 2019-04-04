@@ -1,5 +1,6 @@
 import org.neo4j.driver.v1.Driver
 import org.neo4j.driver.v1.Record
+import java.lang.IllegalStateException
 import java.lang.reflect.InvocationTargetException
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.memberProperties
@@ -53,11 +54,10 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode> findNode(block: T.(Filter) -> Unit): List<T> {
+    inline fun <reified T : GraphNode> findNode(limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
         val filter = Filter(T::class.java)
 
-        val clazzConstructor = T::class.constructors.first()
-        val clazz = clazzConstructor.call().apply {
+        val clazz = T::class.constructors.first().call().apply {
             block(filter)
         }
 
@@ -100,7 +100,7 @@ abstract class GraphTable(
                 "WHERE (${where.joinToString(" AND ")})"
             } else {
                 ""
-            }} RETURN ($returnQuery)"
+            }} RETURN ($returnQuery) SKIP $offset LIMIT $limit"
 
             println(query.trimAllSpaces())
 
@@ -110,14 +110,22 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode> editNode(nodeId: Long, block: T.() -> Unit): List<T> {
+    inline fun <reified T : GraphNode> editNode(nodeId: Long, block: T.(Filter) -> Unit): List<T> {
+        val filter = Filter(T::class.java)
+
         val clazz = T::class.constructors.first().call().apply {
-            block()
+            block(filter)
         }
 
         val clazzName = clazz::class.java.name
 
         return driver.session().readTransaction { transaction ->
+            val where = mutableListOf<String>()
+
+            where.add("ID(${clazzName.decapitalize()}) = $nodeId")
+
+            where.addAll(filter.filters)
+
             val setQuery = clazz::class.memberProperties.map { field ->
                 field.isAccessible = true
 
@@ -140,7 +148,7 @@ abstract class GraphTable(
             }.filterNotNull().joinToString(", ")
 
             val query =
-                "MATCH (${clazzName.decapitalize()}: ${clazzName.capitalize()}) WHERE (ID(${clazzName.decapitalize()}) = $nodeId) ${if (setQuery.isNotBlank()) "SET $setQuery" else ""} RETURN (${clazzName.decapitalize()})"
+                "MATCH (${clazzName.decapitalize()}: ${clazzName.capitalize()}) WHERE (${if (where.isNotEmpty()) where.joinToString(" AND ") else ""}) ${if (setQuery.isNotBlank()) "SET $setQuery" else ""} RETURN (${clazzName.decapitalize()})"
 
             println(query.trimAllSpaces())
 
@@ -150,39 +158,73 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphRelationship> newRelation(firstNode: GraphNode, secondNode: GraphNode): GraphRelationship {
+    inline fun <reified T : GraphRelationship> newRelationship(firstNodeId: Long, secondNodeId: Long): GraphRelationship {
         return driver.session().readTransaction { transaction ->
             val clazz = T::class.constructors.first().call()
 
             val clazzName = clazz::class.java.name
 
-            val query = "MATCH (a), (b) WHERE ( ID(a) = ${firstNode.id} AND ID(b) = ${secondNode.id}) MERGE (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) RETURN (${clazzName.decapitalize()};"
-            println(query.trimAllSpaces())
-
-            return@readTransaction transaction.run(query).list { record ->
-                val relationship = record[clazzName].asRelationship()
-
-                clazz.id = relationship.id()
-                clazz.startNodeId = relationship.startNodeId()
-                clazz.endNodeId = relationship.endNodeId()
-
-                return@list clazz
-            }.first()
-        }
-    }
-
-    inline fun <reified T : GraphRelationship> newRelation(firstNodeId: Long, secondNode: GraphNode): GraphRelationship {
-        return driver.session().readTransaction { transaction ->
-            val clazz = T::class.constructors.first().call()
-
-            val clazzName = clazz::class.java.name
-
-            val query = "MATCH (a), (b) WHERE ( ID(a) = $firstNodeId AND ID(b) = ${secondNode.id}) MERGE (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) RETURN (${clazzName.decapitalize()});"
+            val query = "MATCH (a), (b) WHERE ( ID(a) = $firstNodeId AND ID(b) = $secondNodeId) MERGE (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) RETURN (${clazzName.decapitalize()});"
             println(query.trimAllSpaces())
 
             return@readTransaction transaction.run(query).list { record ->
                 record.parseToRelationship<T>()
             }.first()
+        }
+    }
+
+    inline fun <reified T : GraphNode, reified R : CreatorRelationship> findRelationshipNode(nodeId: Long, limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
+        val filter = Filter(T::class.java)
+
+        val relationshipName = R::class.java.name
+
+        val clazz = T::class.constructors.first().call().apply {
+            block(filter)
+        }
+
+        val clazzName = clazz::class.java.name
+
+        return driver.session().readTransaction { transaction ->
+            val params = mutableListOf<String>()
+            val where = mutableListOf<String>()
+
+            clazz::class.memberProperties.forEach { field ->
+                field.isAccessible = true
+
+                val fieldValue = try {
+                    field.getter.call(clazz)
+                } catch (e: InvocationTargetException) {
+                    return@forEach
+                }
+
+                when (field.name) {
+                    "id" -> {
+                        where.add("ID(${clazzName.decapitalize()}) = $fieldValue")
+                    }
+                    else -> {
+                        if (fieldValue != null)
+                            params.add("${field.name}: \"$fieldValue\"")
+                    }
+                }
+            }
+
+            where.addAll(filter.filters)
+
+            where.add("ID(a) = $nodeId")
+
+            val matchQuery = "(a) - [${relationshipName.decapitalize()}: ${relationshipName.capitalize()}] -> (${clazzName.decapitalize()}: ${clazzName.capitalize()})"
+
+            val query = "MATCH $matchQuery WHERE (${if (!where.isEmpty()) {
+                "WHERE (${where.joinToString(" AND ")})"
+            } else {
+                ""
+            }}) RETURN (${clazzName.decapitalize()}) SKIP $offset LIMIT $limit"
+
+            println(query.trimAllSpaces())
+
+            return@readTransaction transaction.run(query).list { record ->
+                record.parseToNode<T>()
+            }
         }
     }
 
@@ -198,19 +240,20 @@ abstract class GraphTable(
                         property.setter.call(this, node.id().toInt())
                     }
 
-                    else -> when (property.returnType.javaType) {
-                        String::class.java ->
-                            property.setter.call(this, node[property.name].asString())
+                    else -> {
+                        if (node[property.name].isNull) return@forEach
 
-                        Integer::class.java ->
-                            property.setter.call(this, node[property.name].asInt())
+                        when (property.returnType.javaType) {
+                            String::class.java ->
+                                property.setter.call(this, node[property.name].asString())
 
-                        Long::class.java ->
-                            property.setter.call(this, node[property.name].asLong())
+                            Integer::class.java ->
+                                property.setter.call(this, node[property.name].asInt())
 
-                        else -> {
-                            println(property.returnType.javaType.typeName)
-                            println(Long::class.java.typeName)
+                            Long::class.java ->
+                                property.setter.call(this, node[property.name].asLong())
+
+                            else -> throw IllegalStateException("Illegal parse type.")
                         }
                     }
                 }

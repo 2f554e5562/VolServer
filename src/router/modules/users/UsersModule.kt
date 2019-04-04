@@ -20,6 +20,7 @@ fun Routing.usersProfileGet(
                 )
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             respondBadRequest()
         }
     }
@@ -41,6 +42,7 @@ fun Routing.usersFind(
                 )
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             respondBadRequest()
         }
     }
