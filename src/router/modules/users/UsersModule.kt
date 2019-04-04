@@ -68,6 +68,7 @@ fun Routing.usersProfileEdit(
                 }
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             respondBadRequest()
         }
     }

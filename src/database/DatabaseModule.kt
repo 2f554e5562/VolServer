@@ -1,174 +1,154 @@
 import database.GroupAlreadyExists
 import database.UserAlreadyExists
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.neo4j.driver.v1.AuthTokens
-import org.neo4j.driver.v1.GraphDatabase
 
 class DatabaseModule {
-    private val serverUrl = "194.1.239.114"
-
-    private fun connectGraph(uri: String, user: String, password: String) =
-        GraphDatabase.driver(uri, AuthTokens.basic(user, password))
-
-    private val driver = connectGraph("bolt://$serverUrl:7687", "vol_server", "2f4e623830")
-
     fun connectRelational() {
-        Database.connect(
-            url = "jdbc:h2:tcp://$serverUrl:9092/./root/vol_server/h2db",
-            driver = "org.h2.Driver",
-            user = "vol_server",
-            password = "2f4e623830"
-        )
 
-        data class A(
-            val f1: String,
-            val f2: String,
-            val f3: String?
-        )
-
-        transaction {
-            SchemaUtils.create(UsersTable, EventsTable, GroupsTable)
-        }
     }
 
-    private fun GraphNode.findRelationNodes(relation: String): List<Int> {
-        return driver.session().readTransaction { transaction ->
-            val relationQuery =
-                if (relation == "any")
-                    "[$relation]"
-                else
-                    "[$relation: ${relation.capitalize()}]"
+//    private fun GraphNode.find(vararg byFields: String): List<GraphNode> {
+//        return driver.session().readTransaction { transaction ->
+//            val query =
+//                "MATCH (${title.decapitalize()}: ${title.capitalize()}) WHERE (${nodeParameters.filter { it.key in byFields }.map { "${title.decapitalize()}.${it.key} = \"${it.value}\"" }.joinToString(
+//                    " AND "
+//                )}) RETURN ${title.decapitalize()}"
+//            println(query)
+//
+//            val result = transaction.run(query)
+//
+//            return@readTransaction result.list { record ->
+//                val node = record[title].asNode()
+//
+//                println(node.asMap { it.asString() }.toMutableMap())
+//
+//                GraphNode(
+//                    node.labels().first(),
+//                    node.asMap { it.asString() }.toMutableMap()
+//                )
+//            }
+//        }
+//    }
+//
+//    private fun GraphNode.findRelationNodes(relation: String): List<Int> {
+//        return driver.session().readTransaction { transaction ->
+//            val relationQuery =
+//                if (relation == "any")
+//                    "[$relation]"
+//                else
+//                    "[$relation: ${relation.capitalize()}]"
+//
+//            val query =
+//                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+//                    ", "
+//                )} }) - $relationQuery -> (otherNode) RETURN otherNode"
+//            println(query)
+//
+//            val result = transaction.run(query)
+//
+//            return@readTransaction result.list { record ->
+//                return@list record["otherNode"]["id"].asInt()
+//            }
+//        }
+//    }
+//
+//    private fun GraphNode.mergeGraphNodes(relation: String, mergeWith: GraphNode) {
+//        driver.session().readTransaction { transaction ->
+//            val query =
+//                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+//                    ", "
+//                )} }), (${mergeWith.title}: ${mergeWith.title.capitalize()} { ${mergeWith.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+//                    ", "
+//                )} }) MERGE (($title) - [$relation: ${relation.capitalize()}] -> (${mergeWith.title}))"
+//            println(query)
+//
+//            return@readTransaction transaction.run(query)
+//        }
+//    }
+//
+//    private fun GraphNode.deleteGraphNode() {
+//        driver.session().readTransaction { transaction ->
+//            val query =
+//                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+//                    ", "
+//                )} }) DETACH DELETE $title"
+//            println(query)
+//
+//            return@readTransaction transaction.run(query)
+//        }
+//    }
+//
+//    private fun GraphNode.deleteRelation(relation: String, otherNode: GraphNode) {
+//        driver.session().readTransaction { transaction ->
+//            val query =
+//                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+//                    ", "
+//                )} }) - [$relation: ${relation.capitalize()}] -> (${otherNode.title}: ${otherNode.title.capitalize()} { ${otherNode.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
+//                    ", "
+//                )} }) DELETE $relation"
+//            println(query)
+//            return@readTransaction transaction.run(query)
+//        }
+//    }
 
-            val query =
-                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-                    ", "
-                )} }) - $relationQuery -> (otherNode) RETURN otherNode"
-            println(query)
 
-            val result = transaction.run(query)
-
-            return@readTransaction result.list { record ->
-                return@list record["otherNode"]["id"].asInt()
-            }
+    fun createUser(user: UsersCreateI): UserNode {
+        val users = VolGraphDatabase.find<UserNode> {
+            login = user.login
+            password = user.password
         }
-    }
 
-    private fun GraphNode.createNewGraphNode() {
-        driver.session().readTransaction { transaction ->
-            val query =
-                "CREATE ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-                    ", "
-                )} } RETURN ($title))"
-            println(query)
-
-            val result = transaction.run(query).list { record ->
-                record[title].asMap()
-            }
-
-            println(result)
-
-            return@readTransaction result
-        }
-    }
-
-    private fun GraphNode.mergeGraphNodes(relation: String, mergeWith: GraphNode) {
-        driver.session().readTransaction { transaction ->
-            val query =
-                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-                    ", "
-                )} }), (${mergeWith.title}: ${mergeWith.title.capitalize()} { ${mergeWith.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-                    ", "
-                )} }) MERGE (($title) - [$relation: ${relation.capitalize()}] -> (${mergeWith.title}))"
-            println(query)
-
-            return@readTransaction transaction.run(query)
-        }
-    }
-
-    private fun GraphNode.deleteGraphNode() {
-        driver.session().readTransaction { transaction ->
-            val query =
-                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-                    ", "
-                )} }) DETACH DELETE $title"
-            println(query)
-
-            return@readTransaction transaction.run(query)
-        }
-    }
-
-    private fun GraphNode.deleteRelation(relation: String, otherNode: GraphNode) {
-        driver.session().readTransaction { transaction ->
-            val query =
-                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-                    ", "
-                )} }) - [$relation: ${relation.capitalize()}] -> (${otherNode.title}: ${otherNode.title.capitalize()} { ${otherNode.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-                    ", "
-                )} }) DELETE $relation"
-            println(query)
-            return@readTransaction transaction.run(query)
-        }
-    }
-
-
-    fun createUser(user: UsersCreateI): UserRow = transaction {
-        if (UserRow.find { UsersTable.login eq user.login.trimAllSpaces() }.count() == 0) {
-            val newUser = UserRow.new {
+        if (users.isEmpty())
+            return VolGraphDatabase.new<UserNode> {
                 login = user.login.trimAllSpaces()
                 password = user.password.trimAllSpaces()
                 firstName = user.data.firstName.trimAllSpaces()
                 lastName = user.data.lastName.trimAllSpaces()
                 middleName = user.data.middleName.trimAllSpaces()
                 birthday = user.data.birthday
-
-                if (user.data.about != null)
-                    about = user.data.about.trimAllSpaces()
-
-                if (user.data.phoneNumber != null)
-                    phoneNumber = user.data.phoneNumber.trimAllSpaces()
-
-                if (user.data.image != null)
-                    image = user.data.image.trimAllSpaces()
-
-                if (user.data.email != null)
-                    email = user.data.email.trimAllSpaces()
-
-                if (user.data.link != null)
-                    link = user.data.link.trimAllSpaces()
+                about = user.data.about?.trimAllSpaces()
+                phoneNumber = user.data.phoneNumber?.trimAllSpaces()
+                image = user.data.image?.trimAllSpaces() ?: "default"
+                email = user.data.email?.trimAllSpaces()
+                link = user.data.link?.trimAllSpaces()
             }
-
-            user.data.toNode().createNewGraphNode()
-
-            return@transaction newUser
-        } else {
+        else {
             throw UserAlreadyExists()
         }
     }
 
-    fun findByLoginAndPassword(login: String, password: String): UserRow? = transaction {
-        UserRow.find { (UsersTable.login eq login) and (UsersTable.password eq password.getHashSHA256()) }.firstOrNull()
-    }
+    fun findByLoginAndPassword(login: String, password: String) =
+        VolGraphDatabase.find<UserNode> {
+            this.login = login
+            this.password = password
+        }.firstOrNull()
 
-    fun findUserById(id: Int): UserRow? = transaction {
-        UserRow.findById(id)
-    }
+    fun findUserById(id: Int) =
+        VolGraphDatabase.find<UserNode> {
+            this.id = id
+        }.firstOrNull()
 
-    fun editUser(user: UserDataEdit, userId: Int): UserFullData? = transaction {
-        val userData = UserRow.findById(userId)
+    fun editUser(user: UserDataEdit, userId: Int): UserData {
+        val editedUser = VolGraphDatabase.edit<UserNode>(userId) {
+            user.firstName?.let { firstName = it }
+            user.lastName?.let { lastName = it }
+            user.middleName?.let { middleName = it }
+            user.birthday?.let { birthday = it }
 
-        userData?.apply {
-            user.firstName?.let { firstName = it.trimAllSpaces() }
-            user.lastName?.let { lastName = it.trimAllSpaces() }
-            user.middleName?.let { middleName = it.trimAllSpaces() }
-            user.about?.let { about = it.trimAllSpaces() }
-            user.phoneNumber?.let { phoneNumber = it.trimAllSpaces() }
-            user.image?.let { image = it.trimAllSpaces() }
-            user.email?.let { email = it.trimAllSpaces() }
-            user.link?.let { link = it.trimAllSpaces() }
-        }?.let {
-            UserFullData(
-                it.id.value,
+            about = user.about
+            phoneNumber = user.phoneNumber
+            image = user.image
+            email = user.email
+            link = user.link
+        }.first()
+
+        return editedUser.let {
+            UserData(
+                it.id,
                 it.firstName,
                 it.lastName,
                 it.middleName,
@@ -228,7 +208,7 @@ class DatabaseModule {
         }
 
         query.limit(amount, offset).map {
-            UserFullData(
+            UserData(
                 it[UsersTable.id].value,
                 it[UsersTable.firstName],
                 it[UsersTable.lastName],
@@ -243,41 +223,24 @@ class DatabaseModule {
         }
     }
 
-
-    fun createGroup(group: GroupData, userId: Int): GroupRow = transaction {
-        if (GroupRow.find { GroupsTable.title eq group.title.trimAllSpaces() }.count() == 0) {
-            val newGroup = GroupRow.new {
+    fun createGroup(group: GroupData, userId: Int) =
+        if (VolGraphDatabase.find<GroupNode> { title = group.title }.isNotEmpty()) {
+            val newGroupNode = VolGraphDatabase.new<GroupNode> {
                 title = group.title.trimAllSpaces()
-                creatorId = userId
-                canPost = group.canPost
-
-                group.description?.let { description = it.trimAllSpaces() }
-
-                group.color?.let { color = it.trimAllSpaces() }
-
-                group.image?.let { image = it.trimAllSpaces() }
-
-                group.link?.let { link = it.trimAllSpaces() }
+                description = group.description?.trimAllSpaces()
+                color = group.color.trimAllSpaces()
+                image = group.image.trimAllSpaces()
+                link = group.link?.trimAllSpaces()
             }
 
-            val newGroupNode = GraphNode(
-                "group",
-                mapOf("id" to newGroup.id.value.toString())
-            )
+            val creatorNode = VolGraphDatabase.find<UserNode> {
+                id = userId
+            }.first()
 
-            val creatorNode = GraphNode(
-                "user",
-                mapOf("id" to userId.toString())
-            )
+            VolGraphDatabase.newRelation<CreatorRelation>(creatorNode, newGroupNode)
 
-            newGroupNode.createNewGraphNode()
-            creatorNode.mergeGraphNodes("creatorOf", newGroupNode)
-
-            return@transaction newGroup
-        } else {
-            throw GroupAlreadyExists()
-        }
-    }
+            newGroupNode
+        } else throw GroupAlreadyExists()
 
     fun editGroup(group: GroupDataEdit, groupId: Int): GroupFullData? = transaction {
         val groupData = GroupRow.findById(groupId)
@@ -341,33 +304,25 @@ class DatabaseModule {
     }
 
 
-    fun createEvent(event: EventData, userId: Int): EventRow = transaction {
-        val newEvent = EventRow.new {
-            title = event.title.trimAllSpaces()
-            authorId = userId
+    fun createEvent(event: EventData, userId: Int) =
+        if (VolGraphDatabase.find<EventNode> { title = event.title }.isNotEmpty()) {
+            val newEventNode = VolGraphDatabase.new<EventNode> {
+                title = event.title.trimAllSpaces()
+                place = event.place?.trimAllSpaces()
+                datetime = event.datetime.toString()
+                duration = event.duration.toString()
+                description = event.description?.trimAllSpaces()
+                link = event.link?.trimAllSpaces()
+            }
 
-            event.place?.let { place = it.trimAllSpaces() }
-            event.datetime?.let { datetime = it }
-            event.duration?.let { duration = it }
-            event.description?.let { description = it.trimAllSpaces() }
-            event.link?.let { link = it.trimAllSpaces() }
-        }
+            val creatorNode = VolGraphDatabase.find<UserNode> {
+                id = userId
+            }.first()
 
-        val newEventNode = GraphNode(
-            "event",
-            mapOf("id" to newEvent.id.value.toString())
-        )
+            VolGraphDatabase.newRelation<CreatorRelation>(creatorNode, newEventNode)
 
-        val creatorNode = GraphNode(
-            "user",
-            mapOf("id" to userId.toString())
-        )
-
-        newEventNode.createNewGraphNode()
-        creatorNode.mergeGraphNodes("creatorOf", newEventNode)
-
-        return@transaction newEvent
-    }
+            newEventNode
+        } else throw GroupAlreadyExists()
 
     fun editEvent(event: EventsDataEdit, eventId: Int): EventFullData? = transaction {
         val eventData = EventRow.findById(eventId)
@@ -446,20 +401,5 @@ class DatabaseModule {
                 it[EventsTable.link]
             )
         }
-    }
-
-    fun findEventsByUser(userId: Int, offset: Int, amount: Int, relation: String): List<EventFullData> = transaction {
-        val userNode = GraphNode(
-            "user",
-            mapOf("id" to userId.toString())
-        )
-
-        val relationNodes = userNode.findRelationNodes(relation)
-
-        return@transaction findEventsByParameters(
-            EventDataSearch(relationNodes),
-            offset,
-            amount
-        )
     }
 }

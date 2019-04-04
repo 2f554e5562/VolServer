@@ -3,7 +3,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 //data class UsersProfileGetI()
 
 data class UsersProfileGetO(
-    @JsonProperty("data") val data: UserFullData
+    @JsonProperty("data") val data: UserData
 )
 
 data class UsersFindI(
@@ -13,7 +13,7 @@ data class UsersFindI(
 )
 
 data class UsersFindO(
-    @JsonProperty("users") val users: List<UserFullData>
+    @JsonProperty("users") val users: List<UserData>
 )
 
 data class UsersProfileEditI(
@@ -21,11 +21,24 @@ data class UsersProfileEditI(
 )
 
 data class UsersProfileEditO(
-    @JsonProperty("new_data") val newData: UserFullData
+    @JsonProperty("new_data") val newData: UserData
 )
 
 
+data class UserConstructorData(
+    @JsonProperty("first_name") val firstName: String,
+    @JsonProperty("last_name") val lastName: String,
+    @JsonProperty("middle_name") val middleName: String,
+    @JsonProperty("birthday") val birthday: Long,
+    @JsonProperty("about") val about: String?,
+    @JsonProperty("phone_number") val phoneNumber: String?,
+    @JsonProperty("image") val image: String?,
+    @JsonProperty("email") val email: String?,
+    @JsonProperty("link") val link: String?
+)
+
 data class UserData(
+    @JsonProperty("id") val id: Int,
     @JsonProperty("first_name") val firstName: String,
     @JsonProperty("last_name") val lastName: String,
     @JsonProperty("middle_name") val middleName: String,
@@ -38,7 +51,9 @@ data class UserData(
 )
 
 data class UserFullData(
-    @JsonProperty("id") val id: Int,
+    @JsonProperty("id") val id: Int = -1,
+    @JsonProperty("login") val login: String,
+    @JsonProperty("password") val password: String,
     @JsonProperty("first_name") val firstName: String,
     @JsonProperty("last_name") val lastName: String,
     @JsonProperty("middle_name") val middleName: String,

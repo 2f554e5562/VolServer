@@ -30,10 +30,10 @@ data class GroupsEditO(
 data class GroupData(
     @JsonProperty("title") val title: String,
     @JsonProperty("can_post") val canPost: Boolean,
-    @JsonProperty("image") val image: String?,
+    @JsonProperty("image") val image: String,
     @JsonProperty("description") val description: String?,
     @JsonProperty("link") val link: String?,
-    @JsonProperty("color") val color: String?
+    @JsonProperty("color") val color: String
 )
 
 data class GroupFullData(

@@ -42,7 +42,7 @@ suspend fun PipelineContext<Unit, ApplicationCall>.respondNotFound() =
         )
     )
 
-suspend fun PipelineContext<Unit, ApplicationCall>.respondCreated(message: String) =
+suspend fun PipelineContext<Unit, ApplicationCall>.respondCreated(message: String = "") =
     call.respond(
         HttpStatusCode.Created,
         message

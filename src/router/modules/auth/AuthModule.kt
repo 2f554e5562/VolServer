@@ -25,9 +25,9 @@ fun Routing.authTokenCreateByLoginAndPassword(
                     CreateTokenByLoginO(
                         tokenManager.createToken(
                             AuthUserData(
-                                user.id.value,
-                                user.login,
-                                user.password
+                                user.id!!,
+                                user.login!!,
+                                user.password!!
                             )
                         ).toString()
                     ).writeValueAsString()
@@ -57,7 +57,7 @@ fun Routing.authTokenCreateByRefreshToken(
             } else {
                 val userRefreshToken = tokenManager.createRefreshToken(
                     AuthUserData(
-                        user.id.value,
+                        user.id,
                         user.login,
                         user.password
                     )
@@ -68,7 +68,7 @@ fun Routing.authTokenCreateByRefreshToken(
                         CreateTokenByRefreshTokenO(
                             tokenManager.createToken(
                                 AuthUserData(
-                                    user.id.value,
+                                    user.id,
                                     user.login,
                                     user.password
                                 )
@@ -97,22 +97,21 @@ fun Routing.authUsersCreate(
                 createUserI
             )
 
-            val token = tokenManager.createToken(
-                AuthUserData(
-                    user.id.value,
-                    user.login,
-                    user.password
-                )
-            )
-
             respondCreated(
                 UsersCreateO(
-                    token.toString()
+                    tokenManager.createToken(
+                        AuthUserData(
+                            user.id!!,
+                            user.login!!,
+                            user.password!!
+                        )
+                    ).toString()
                 ).writeValueAsString()
             )
         } catch (e: UserAlreadyExists) {
             respondConflict()
         } catch (e: Exception) {
+            e.printStackTrace()
             respondBadRequest()
         }
     }
