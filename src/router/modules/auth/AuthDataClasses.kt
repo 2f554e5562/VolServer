@@ -16,7 +16,7 @@ data class CreateTokenByLoginO(
 data class UsersCreateI(
     @JsonProperty("login") val login: String,
     @JsonProperty("password") val password: String,
-    @JsonProperty("data") val data: UserData
+    @JsonProperty("data") val data: UserCreateData
 )
 
 data class UsersCreateO(

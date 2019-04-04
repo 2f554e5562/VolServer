@@ -25,7 +25,7 @@ data class UsersProfileEditO(
 )
 
 
-data class UserConstructorData(
+data class UserCreateData(
     @JsonProperty("first_name") val firstName: String,
     @JsonProperty("last_name") val lastName: String,
     @JsonProperty("middle_name") val middleName: String,
@@ -38,7 +38,7 @@ data class UserConstructorData(
 )
 
 data class UserData(
-    @JsonProperty("id") val id: Int,
+    @JsonProperty("id") val id: Long,
     @JsonProperty("first_name") val firstName: String,
     @JsonProperty("last_name") val lastName: String,
     @JsonProperty("middle_name") val middleName: String,
@@ -51,7 +51,7 @@ data class UserData(
 )
 
 data class UserFullData(
-    @JsonProperty("id") val id: Int = -1,
+    @JsonProperty("id") val id: Int,
     @JsonProperty("login") val login: String,
     @JsonProperty("password") val password: String,
     @JsonProperty("first_name") val firstName: String,

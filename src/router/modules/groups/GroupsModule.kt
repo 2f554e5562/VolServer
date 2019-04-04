@@ -7,63 +7,64 @@ import io.ktor.routing.Routing
 import io.ktor.routing.post
 
 
-//fun Routing.groupsCreate(
-//    json: ObjectMapper,
-//    tokenManager: TokenManager,
-//    volDatabase: DatabaseModule
-//) =
-//    post("/groups/create") {
-//        try {
-//            val groupCreateI = json.readValue<GroupCreateI>(call.receive<ByteArray>())
-//
-//            checkPermission(tokenManager, volDatabase) { token, user ->
-//                val group = volDatabase.createGroup(
-//                    groupCreateI.data, user.id
-//                )
-//
-//                respondCreated(
-//                    GroupCreateO(
-//                        GroupFullData(
-//                            group.id.value,
-//                            group.title,
-//                            group.description,
-//                            group.canPost,
-//                            group.color,
-//                            group.image,
-//                            group.link,
-//                            group.creatorId
-//                        )
-//                    ).writeValueAsString()
-//                )
-//            }
-//        } catch (e: GroupAlreadyExists) {
-//            respondConflict()
-//        } catch (e: Exception) {
-//            respondBadRequest()
-//        }
-//    }
-//
-//
-//fun Routing.groupsFind(
-//    json: ObjectMapper,
-//    tokenManager: TokenManager,
-//    volDatabase: DatabaseModule
-//) =
-//    post("/groups/list/find") {
-//        try {
-//            val groupFindI = json.readValue<GroupsFindI>(call.receive<ByteArray>())
-//
-//            checkPermission(tokenManager, volDatabase) { token, user ->
-//                respondOk(
-//                    GroupsFindO(
-//                        volDatabase.findGroupsByParameters(groupFindI.parameters, groupFindI.offset, groupFindI.amount)
-//                    ).writeValueAsString()
-//                )
-//            }
-//        } catch (e: Exception) {
-//            respondBadRequest()
-//        }
-//    }
+fun Routing.groupsCreate(
+    json: ObjectMapper,
+    tokenManager: TokenManager,
+    volDatabase: DatabaseModule
+) =
+    post("/groups/create") {
+        try {
+            val groupCreateI = json.readValue<GroupCreateI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                val group = volDatabase.createGroup(
+                    groupCreateI.data, user.id
+                )
+
+                respondCreated(
+                    GroupCreateO(
+                        GroupFullData(
+                            group.id,
+                            group.title,
+                            group.description,
+                            group.color,
+                            group.image,
+                            group.link,
+                            group.creatorId
+                        )
+                    ).writeValueAsString()
+                )
+            }
+        } catch (e: GroupAlreadyExists) {
+            respondConflict()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
+
+
+fun Routing.groupsFind(
+    json: ObjectMapper,
+    tokenManager: TokenManager,
+    volDatabase: DatabaseModule
+) =
+    post("/groups/list/find") {
+        try {
+            val groupFindI = json.readValue<GroupsFindI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                respondOk(
+                    GroupsFindO(
+                        volDatabase.findGroupsByParameters(groupFindI.parameters, groupFindI.offset, groupFindI.amount)
+                    ).writeValueAsString()
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
 //
 //
 //fun Routing.groupsEdit(

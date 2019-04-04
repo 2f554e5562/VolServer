@@ -68,7 +68,7 @@ import java.lang.IllegalStateException
 //    tokenManager: TokenManager,
 //    volDatabase: DatabaseModule
 //) =
-//    post("/events/{id}/edit") {
+//    post("/events/{id}/editNode") {
 //        try {
 //            val eventsEditI = json.readValue<EventsEditI>(call.receive<ByteArray>())
 //

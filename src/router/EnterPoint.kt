@@ -5,19 +5,14 @@ import authTokenCreateByLoginAndPassword
 import authTokenCreateByRefreshToken
 import authUsersCreate
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-//import groupsCreate
-//import groupsFind
 import imageUpload
 import io.ktor.application.Application
 import io.ktor.routing.routing
 import usersFind
 import usersProfileGet
 import TokenManager
-//import eventsCreate
-//import eventsEdit
-//import eventsFind
-//import eventsFindByUser
-//import groupsEdit
+import groupsCreate
+import groupsFind
 import imageLoad
 import usersProfileEdit
 
@@ -28,8 +23,6 @@ fun Application.module() {
     val volDatabase = DatabaseModule()
     val tokenManager = TokenManager()
     val json = jacksonObjectMapper()
-
-    volDatabase.connectRelational()
 
     routing {
         authTokenCreateByLoginAndPassword(json, tokenManager, volDatabase)
@@ -44,11 +37,11 @@ fun Application.module() {
 
         usersProfileEdit(json, tokenManager, volDatabase)
 
-//        groupsCreate(json, tokenManager, volDatabase)
-//
+        groupsCreate(json, tokenManager, volDatabase)
+
 //        groupsEdit(json, tokenManager, volDatabase)
 //
-//        groupsFind(json, tokenManager, volDatabase)
+        groupsFind(json, tokenManager, volDatabase)
 //
 //        eventsCreate(json, tokenManager, volDatabase)
 //

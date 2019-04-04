@@ -1,109 +1,19 @@
 import database.GroupAlreadyExists
 import database.UserAlreadyExists
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class DatabaseModule {
-    fun connectRelational() {
-
-    }
-
-//    private fun GraphNode.find(vararg byFields: String): List<GraphNode> {
-//        return driver.session().readTransaction { transaction ->
-//            val query =
-//                "MATCH (${title.decapitalize()}: ${title.capitalize()}) WHERE (${nodeParameters.filter { it.key in byFields }.map { "${title.decapitalize()}.${it.key} = \"${it.value}\"" }.joinToString(
-//                    " AND "
-//                )}) RETURN ${title.decapitalize()}"
-//            println(query)
-//
-//            val result = transaction.run(query)
-//
-//            return@readTransaction result.list { record ->
-//                val node = record[title].asNode()
-//
-//                println(node.asMap { it.asString() }.toMutableMap())
-//
-//                GraphNode(
-//                    node.labels().first(),
-//                    node.asMap { it.asString() }.toMutableMap()
-//                )
-//            }
-//        }
-//    }
-//
-//    private fun GraphNode.findRelationNodes(relation: String): List<Int> {
-//        return driver.session().readTransaction { transaction ->
-//            val relationQuery =
-//                if (relation == "any")
-//                    "[$relation]"
-//                else
-//                    "[$relation: ${relation.capitalize()}]"
-//
-//            val query =
-//                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-//                    ", "
-//                )} }) - $relationQuery -> (otherNode) RETURN otherNode"
-//            println(query)
-//
-//            val result = transaction.run(query)
-//
-//            return@readTransaction result.list { record ->
-//                return@list record["otherNode"]["id"].asInt()
-//            }
-//        }
-//    }
-//
-//    private fun GraphNode.mergeGraphNodes(relation: String, mergeWith: GraphNode) {
-//        driver.session().readTransaction { transaction ->
-//            val query =
-//                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-//                    ", "
-//                )} }), (${mergeWith.title}: ${mergeWith.title.capitalize()} { ${mergeWith.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-//                    ", "
-//                )} }) MERGE (($title) - [$relation: ${relation.capitalize()}] -> (${mergeWith.title}))"
-//            println(query)
-//
-//            return@readTransaction transaction.run(query)
-//        }
-//    }
-//
-//    private fun GraphNode.deleteGraphNode() {
-//        driver.session().readTransaction { transaction ->
-//            val query =
-//                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-//                    ", "
-//                )} }) DETACH DELETE $title"
-//            println(query)
-//
-//            return@readTransaction transaction.run(query)
-//        }
-//    }
-//
-//    private fun GraphNode.deleteRelation(relation: String, otherNode: GraphNode) {
-//        driver.session().readTransaction { transaction ->
-//            val query =
-//                "MATCH ($title: ${title.capitalize()} { ${nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-//                    ", "
-//                )} }) - [$relation: ${relation.capitalize()}] -> (${otherNode.title}: ${otherNode.title.capitalize()} { ${otherNode.nodeParameters.map { "${it.key}:${it.value}" }.joinToString(
-//                    ", "
-//                )} }) DELETE $relation"
-//            println(query)
-//            return@readTransaction transaction.run(query)
-//        }
-//    }
-
+    private val volGraphDatabase = VolGraphDatabase
 
     fun createUser(user: UsersCreateI): UserNode {
-        val users = VolGraphDatabase.find<UserNode> {
-            login = user.login
-            password = user.password
+        val users = volGraphDatabase.findNode<UserNode> {
+            login = user.login.trimAllSpaces()
         }
 
         if (users.isEmpty())
-            return VolGraphDatabase.new<UserNode> {
+            return volGraphDatabase.newNode<UserNode> {
                 login = user.login.trimAllSpaces()
                 password = user.password.trimAllSpaces()
                 firstName = user.data.firstName.trimAllSpaces()
@@ -121,19 +31,21 @@ class DatabaseModule {
         }
     }
 
-    fun findByLoginAndPassword(login: String, password: String) =
-        VolGraphDatabase.find<UserNode> {
+    fun findByLoginAndPassword(login: String, password: String): UserNode? {
+        return volGraphDatabase.findNode<UserNode> {
             this.login = login
             this.password = password
         }.firstOrNull()
+    }
 
-    fun findUserById(id: Int) =
-        VolGraphDatabase.find<UserNode> {
+    fun findUserById(id: Long): UserNode? {
+        return volGraphDatabase.findNode<UserNode> {
             this.id = id
         }.firstOrNull()
+    }
 
-    fun editUser(user: UserDataEdit, userId: Int): UserData {
-        val editedUser = VolGraphDatabase.edit<UserNode>(userId) {
+    fun editUser(user: UserDataEdit, userId: Long): UserData? {
+        return volGraphDatabase.editNode<UserNode>(userId) {
             user.firstName?.let { firstName = it }
             user.lastName?.let { lastName = it }
             user.middleName?.let { middleName = it }
@@ -144,9 +56,7 @@ class DatabaseModule {
             image = user.image
             email = user.email
             link = user.link
-        }.first()
-
-        return editedUser.let {
+        }.firstOrNull()?.let {
             UserData(
                 it.id,
                 it.firstName,
@@ -209,7 +119,7 @@ class DatabaseModule {
 
         query.limit(amount, offset).map {
             UserData(
-                it[UsersTable.id].value,
+                it[UsersTable.id].value.toLong(),
                 it[UsersTable.firstName],
                 it[UsersTable.lastName],
                 it[UsersTable.middleName],
@@ -223,40 +133,42 @@ class DatabaseModule {
         }
     }
 
-    fun createGroup(group: GroupData, userId: Int) =
-        if (VolGraphDatabase.find<GroupNode> { title = group.title }.isNotEmpty()) {
-            val newGroupNode = VolGraphDatabase.new<GroupNode> {
+    fun createGroup(group: GroupCreateData, userId: Long): GroupNode {
+        val groups = volGraphDatabase.findNode<GroupNode> {
+            title = group.title.trimAllSpaces()
+        }
+
+        if (groups.isEmpty()) {
+            val groupNode = volGraphDatabase.newNode<GroupNode> {
+                group.description?.let { description = it }
+                group.color?.let { color = it }
+                group.image?.let { image = it }
+                group.link?.let { link = it }
+
                 title = group.title.trimAllSpaces()
-                description = group.description?.trimAllSpaces()
-                color = group.color.trimAllSpaces()
-                image = group.image.trimAllSpaces()
-                link = group.link?.trimAllSpaces()
+                creatorId = userId
             }
 
-            val creatorNode = VolGraphDatabase.find<UserNode> {
-                id = userId
-            }.first()
+            volGraphDatabase.newRelation<CreatorRelationship>(userId, groupNode)
 
-            VolGraphDatabase.newRelation<CreatorRelation>(creatorNode, newGroupNode)
+            return groupNode
+        } else {
+            throw GroupAlreadyExists()
+        }
+    }
 
-            newGroupNode
-        } else throw GroupAlreadyExists()
-
-    fun editGroup(group: GroupDataEdit, groupId: Int): GroupFullData? = transaction {
-        val groupData = GroupRow.findById(groupId)
-
-        groupData?.apply {
+    fun editGroup(group: GroupDataEdit, groupId: Long): GroupFullData? {
+        return volGraphDatabase.editNode<GroupNode>(groupId) {
             group.title?.let { title = it.trimAllSpaces() }
             group.description?.let { description = it.trimAllSpaces() }
             group.color?.let { color = it.trimAllSpaces() }
             group.image?.let { image = it.trimAllSpaces() }
             group.link?.let { link = it.trimAllSpaces() }
-        }?.let {
+        }.firstOrNull()?.let {
             GroupFullData(
-                it.id.value,
+                it.id,
                 it.title,
                 it.description,
-                it.canPost,
                 it.color,
                 it.image,
                 it.link,
@@ -265,64 +177,73 @@ class DatabaseModule {
         }
     }
 
-    fun findGroupsByParameters(parameters: GroupDataSearch, offset: Int, amount: Int) = transaction {
-        val query = GroupsTable.selectAll()
-
-        parameters.apply {
-            ids?.let { ids ->
-                query.andWhere { GroupsTable.id inList ids }
+    fun findGroupsByParameters(parameters: GroupDataSearch, offset: Int, amount: Int): List<GroupFullData> {
+        return volGraphDatabase.findNode<GroupNode> { filter ->
+            parameters.ids?.let {
+                filter.add { className ->
+                    "ID($className)" inList it
+                }
             }
-            title?.let { title ->
-                query.andWhere { GroupsTable.title like "%$title%" }
+            parameters.title?.let {
+                filter.add { className ->
+                    "$className.title" like it
+                }
             }
-            description?.let { description ->
-                query.andWhere { GroupsTable.description like "%$description%" }
+            parameters.description?.let {
+                filter.add { className ->
+                    "$className.description" like it
+                }
             }
-            canPost?.let { canPost ->
-                query.andWhere { GroupsTable.canPost eq canPost }
+            parameters.canPost?.let {
+                filter.add { className ->
+                    "$className.canPost" equals it
+                }
             }
-            link?.let { link ->
-                query.andWhere { GroupsTable.link like "%$link%" }
+            parameters.link?.let {
+                filter.add { className ->
+                    "$className.link" like it
+                }
             }
-            creatorIds?.let { creatorIds ->
-                query.andWhere { GroupsTable.creatorId inList creatorIds }
+            parameters.creatorIds?.let {
+                filter.add { className ->
+                    "$className.creatorId" inList it
+                }
             }
-        }
-
-        query.limit(amount, offset).map {
+        }.map {
             GroupFullData(
-                it[GroupsTable.id].value,
-                it[GroupsTable.title],
-                it[GroupsTable.description],
-                it[GroupsTable.canPost],
-                it[GroupsTable.color],
-                it[GroupsTable.image],
-                it[GroupsTable.link],
-                it[GroupsTable.creatorId]
+                it.id,
+                it.title,
+                it.description,
+                it.color,
+                it.image,
+                it.link,
+                it.creatorId
             )
         }
     }
 
+    fun createEvent(event: EventCreateData, userId: Long): EventNode {
+        val events = volGraphDatabase.findNode<EventNode> {
+            title = event.title.trimAllSpaces()
+        }
 
-    fun createEvent(event: EventData, userId: Int) =
-        if (VolGraphDatabase.find<EventNode> { title = event.title }.isNotEmpty()) {
-            val newEventNode = VolGraphDatabase.new<EventNode> {
-                title = event.title.trimAllSpaces()
-                place = event.place?.trimAllSpaces()
-                datetime = event.datetime.toString()
-                duration = event.duration.toString()
-                description = event.description?.trimAllSpaces()
-                link = event.link?.trimAllSpaces()
+        if (events.isEmpty()) {
+            val eventNode = volGraphDatabase.newNode<EventNode> {
+                title = event.title
+                place = event.place
+                datetime = event.datetime
+                duration = event.duration
+                description = event.description
+                link = event.link
             }
 
-            val creatorNode = VolGraphDatabase.find<UserNode> {
-                id = userId
-            }.first()
+            volGraphDatabase.newRelation<CreatorRelationship>(userId, eventNode)
 
-            VolGraphDatabase.newRelation<CreatorRelation>(creatorNode, newEventNode)
-
-            newEventNode
-        } else throw GroupAlreadyExists()
+            return eventNode
+        } else {
+            throw GroupAlreadyExists()
+        }
+    }
 
     fun editEvent(event: EventsDataEdit, eventId: Int): EventFullData? = transaction {
         val eventData = EventRow.findById(eventId)

@@ -1,5 +1,5 @@
 data class Token(
-    val userId: Int,
+    val userId: Long,
     val userStamp: String
 ) {
     override fun toString() =
@@ -7,7 +7,7 @@ data class Token(
 }
 
 data class AuthUserData(
-    val id: Int,
+    val id: Long,
     val login: String,
     val password: String
 )

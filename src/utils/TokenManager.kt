@@ -14,7 +14,7 @@ class TokenManager {
     }
 
     fun parseToken(token: String) =
-        Token(token.split(":")[0].toInt(), token.split(":")[1])
+        Token(token.split(":")[0].toLong(), token.split(":")[1])
 
     fun createRefreshToken(authUserData: AuthUserData): Token {
         val stamp =

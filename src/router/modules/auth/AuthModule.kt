@@ -25,9 +25,9 @@ fun Routing.authTokenCreateByLoginAndPassword(
                     CreateTokenByLoginO(
                         tokenManager.createToken(
                             AuthUserData(
-                                user.id!!,
-                                user.login!!,
-                                user.password!!
+                                user.id,
+                                user.login,
+                                user.password
                             )
                         ).toString()
                     ).writeValueAsString()
@@ -101,9 +101,9 @@ fun Routing.authUsersCreate(
                 UsersCreateO(
                     tokenManager.createToken(
                         AuthUserData(
-                            user.id!!,
-                            user.login!!,
-                            user.password!!
+                            user.id,
+                            user.login,
+                            user.password
                         )
                     ).toString()
                 ).writeValueAsString()

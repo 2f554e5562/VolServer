@@ -1,7 +1,7 @@
 import com.fasterxml.jackson.annotation.JsonProperty
 
 data class EventCreateI(
-    @JsonProperty("data") val data: EventData
+    @JsonProperty("data") val data: EventCreateData
 )
 
 data class EventCreateO(
@@ -38,7 +38,7 @@ data class EventsEditO(
 )
 
 
-data class EventData(
+data class EventCreateData(
     @JsonProperty("title") val title: String,
     @JsonProperty("place") val place: String?,
     @JsonProperty("datetime") val datetime: Long?,
@@ -50,7 +50,7 @@ data class EventData(
 data class EventFullData(
     @JsonProperty("id") val id: Int,
     @JsonProperty("title") val title: String,
-    @JsonProperty("authorId") val authorId: Int,
+    @JsonProperty("author_id") val authorId: Int,
     @JsonProperty("place") val place: String?,
     @JsonProperty("datetime") val datetime: Long?,
     @JsonProperty("duration") val duration: Long?,
@@ -61,7 +61,7 @@ data class EventFullData(
 data class EventDataSearch(
     @JsonProperty("ids") val ids: List<Int>? = null,
     @JsonProperty("title") val title: String? = null,
-    @JsonProperty("authorIds") val authorIds: List<Int>? = null,
+    @JsonProperty("author_ids") val authorIds: List<Int>? = null,
     @JsonProperty("place") val place: String? = null,
     @JsonProperty("datetime_min") val datetimeMin: Long? = null,
     @JsonProperty("datetime_max") val datetimeMax: Long? = null,

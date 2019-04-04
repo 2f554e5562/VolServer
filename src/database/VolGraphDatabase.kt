@@ -21,6 +21,7 @@ class UserNode : GraphNode() {
 }
 
 class GroupNode : GraphNode() {
+    var creatorId by NotNullable<Long>()
     var title by NotNullable<String>()
     var description by Nullable<String>()
     var color by Nullable<String>()
@@ -29,12 +30,13 @@ class GroupNode : GraphNode() {
 }
 
 class EventNode : GraphNode() {
+    var creatorId by NotNullable<Long>()
     var title by NotNullable<String>()
     var place by Nullable<String>()
-    var datetime by Nullable<String>()
-    var duration by Nullable<String>()
+    var datetime by Nullable<Long>()
+    var duration by Nullable<Long>()
     var description by Nullable<String>()
     var link by Nullable<String>()
 }
 
-class CreatorRelation : GraphRelation(VolGraphDatabase, "creatorOf")
+class CreatorRelationship : GraphRelationship()

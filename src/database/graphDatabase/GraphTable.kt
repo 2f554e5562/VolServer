@@ -10,7 +10,12 @@ abstract class GraphTable(
     val tableName: String,
     val driver: Driver
 ) {
-    inline fun <reified T : GraphNode> new(block: T.() -> Unit): T {
+    init {
+        driver.session().run("MATCH (n) WHERE (ID(n) = -1) RETURN n;")
+        println("Database ${this::class.java.name} - CONNECTED")
+    }
+
+    inline fun <reified T : GraphNode> newNode(block: T.() -> Unit): T {
         val clazz = T::class.constructors.first().call().apply {
             block()
         }
@@ -37,21 +42,23 @@ abstract class GraphTable(
                             else -> "${field.name}: $fieldValue"
                         }
                     else
-                        "${field.name}: null"
+                        null
                 }.filterNotNull().joinToString(", ")} }) RETURN (${clazzName.decapitalize()})"
 
             println(query.trimAllSpaces())
 
             return@readTransaction transaction.run(query).list { record ->
-                record.parseTo<T>()
+                record.parseToNode<T>()
             }.first()
         }
     }
 
-    inline fun <reified T : GraphNode> find(block: T.() -> Unit): List<T> {
+    inline fun <reified T : GraphNode> findNode(block: T.(Filter) -> Unit): List<T> {
+        val filter = Filter(T::class.java)
+
         val clazzConstructor = T::class.constructors.first()
         val clazz = clazzConstructor.call().apply {
-            block()
+            block(filter)
         }
 
         val clazzName = clazz::class.java.name
@@ -80,6 +87,8 @@ abstract class GraphTable(
                 }
             }
 
+            where.addAll(filter.filters)
+
             val returnQuery = clazzName.decapitalize()
 
             val matchQuery =
@@ -96,12 +105,12 @@ abstract class GraphTable(
             println(query.trimAllSpaces())
 
             return@readTransaction transaction.run(query).list { record ->
-                record.parseTo<T>()
+                record.parseToNode<T>()
             }
         }
     }
 
-    inline fun <reified T : GraphNode> edit(nodeId: Int, block: T.() -> Unit): List<T> {
+    inline fun <reified T : GraphNode> editNode(nodeId: Long, block: T.() -> Unit): List<T> {
         val clazz = T::class.constructors.first().call().apply {
             block()
         }
@@ -136,24 +145,48 @@ abstract class GraphTable(
             println(query.trimAllSpaces())
 
             return@readTransaction transaction.run(query).list { record ->
-                record.parseTo<T>()
+                record.parseToNode<T>()
             }
         }
     }
 
-    inline fun <reified T : GraphRelation> newRelation(firstNode: GraphNode, secondNode: GraphNode) {
-        driver.session().readTransaction { transaction ->
-            val query =
-                "MATCH (a, b) WHERE ( ID(a) = ${firstNode.id} AND ID(b) = ${secondNode.id}) MERGE (a) - [$] -> (b)"
+    inline fun <reified T : GraphRelationship> newRelation(firstNode: GraphNode, secondNode: GraphNode): GraphRelationship {
+        return driver.session().readTransaction { transaction ->
+            val clazz = T::class.constructors.first().call()
+
+            val clazzName = clazz::class.java.name
+
+            val query = "MATCH (a), (b) WHERE ( ID(a) = ${firstNode.id} AND ID(b) = ${secondNode.id}) MERGE (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) RETURN (${clazzName.decapitalize()};"
             println(query.trimAllSpaces())
 
-            return@readTransaction transaction.run(query).list {
+            return@readTransaction transaction.run(query).list { record ->
+                val relationship = record[clazzName].asRelationship()
 
-            }
+                clazz.id = relationship.id()
+                clazz.startNodeId = relationship.startNodeId()
+                clazz.endNodeId = relationship.endNodeId()
+
+                return@list clazz
+            }.first()
         }
     }
 
-    inline fun <reified T : GraphNode> Record.parseTo(): T {
+    inline fun <reified T : GraphRelationship> newRelation(firstNodeId: Long, secondNode: GraphNode): GraphRelationship {
+        return driver.session().readTransaction { transaction ->
+            val clazz = T::class.constructors.first().call()
+
+            val clazzName = clazz::class.java.name
+
+            val query = "MATCH (a), (b) WHERE ( ID(a) = $firstNodeId AND ID(b) = ${secondNode.id}) MERGE (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) RETURN (${clazzName.decapitalize()});"
+            println(query.trimAllSpaces())
+
+            return@readTransaction transaction.run(query).list { record ->
+                record.parseToRelationship<T>()
+            }.first()
+        }
+    }
+
+    inline fun <reified T : GraphNode> Record.parseToNode(): T {
         val node = this[T::class.java.name.decapitalize()].asNode()
 
         return T::class.constructors.first().call().apply {
@@ -181,6 +214,20 @@ abstract class GraphTable(
                         }
                     }
                 }
+            }
+        }
+    }
+
+    inline fun <reified T : GraphRelationship> Record.parseToRelationship(): T {
+        val relationship = this[T::class.java.name.decapitalize()].asRelationship()
+
+        return T::class.constructors.first().call().apply {
+            this::class.memberProperties.forEach { property ->
+                property as KMutableProperty<*>
+
+                id = relationship.id()
+                startNodeId = relationship.startNodeId()
+                endNodeId = relationship.endNodeId()
             }
         }
     }
