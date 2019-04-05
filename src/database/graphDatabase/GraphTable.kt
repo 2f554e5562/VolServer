@@ -31,8 +31,8 @@ abstract class GraphTable(
             clazz::class.memberProperties.forEach { property ->
                 val observeRelationship = property.findAnnotation<ObserveRelationship>()
 
-                if (observeRelationship != null) {
-                    returnItems.add("(() - [:${observeRelationship.relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${observeRelationship.relationName.decapitalize()}")
+                observeRelationship?.relationName?.forEach { relationName ->
+                    returnItems.add("(() - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}")
                 }
             }
 
@@ -56,7 +56,7 @@ abstract class GraphTable(
                         }
                     else
                         null
-                }.filterNotNull().joinToString(", ")} }) RETURN ${returnItems.joinToString(", ")}"
+                }.filterNotNull().distinct().joinToString(", ")} }) RETURN ${returnItems.distinct().joinToString(", ")}"
 
             println(query.trimAllSpaces())
 
@@ -66,11 +66,7 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode> findNode(
-        limit: Long = 20,
-        offset: Long = 0,
-        block: T.(Filter) -> Unit
-    ): List<T> {
+    inline fun <reified T : GraphNode> findNode(limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
         val filter = Filter(T::class.java)
 
         val clazz = T::class.constructors.first().call().apply {
@@ -111,21 +107,91 @@ abstract class GraphTable(
             clazz::class.memberProperties.forEach { property ->
                 val observeRelationship = property.findAnnotation<ObserveRelationship>()
 
-                if (observeRelationship != null) {
-                    returnItems.add("(() - [:${observeRelationship.relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${observeRelationship.relationName.decapitalize()}")
+                observeRelationship?.relationName?.forEach { relationName ->
+                    returnItems.add("(() - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}")
                 }
             }
 
             val matchQuery =
-                "${clazzName.decapitalize()}: ${clazzName.capitalize()} { ${params.joinToString(
+                "${clazzName.decapitalize()}: ${clazzName.capitalize()} { ${params.distinct().joinToString(
                     ", "
                 )} }"
 
             val query = "MATCH ($matchQuery) ${if (!where.isEmpty()) {
-                "WHERE (${where.joinToString(" AND ")})"
+                "WHERE (${where.distinct().joinToString(" AND ")})"
             } else {
                 ""
-            }} RETURN ${returnItems.joinToString(", ")} SKIP $offset LIMIT $limit"
+            }} RETURN ${returnItems.distinct().joinToString(", ")} SKIP $offset ${if (limit > 0) "LIMIT $limit" else ""}"
+
+            println(query.trimAllSpaces())
+
+            return@readTransaction transaction.run(query).list { record ->
+                record.parseToNode<T>()
+            }
+        }
+    }
+
+    inline fun <reified R : GraphNode, reified T : GraphNode> findNodeRelatedWith(relatedNodeId: Long, limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
+        val filter = Filter(T::class.java)
+
+        val clazz = T::class.constructors.first().call().apply {
+            block(filter)
+        }
+
+        val clazzR = R::class.constructors.first().call()
+
+        val clazzName = clazz::class.java.name
+        val clazzRName = clazzR::class.java.name
+
+        return driver.session().readTransaction { transaction ->
+            val params = mutableListOf<String>()
+            val where = mutableListOf<String>()
+            val returnItems = mutableListOf<String>()
+
+            returnItems.add("(${clazzName.decapitalize()})")
+
+            clazz::class.memberProperties.forEach { field ->
+                field.isAccessible = true
+
+                val fieldValue = try {
+                    field.getter.call(clazz)
+                } catch (e: InvocationTargetException) {
+                    return@forEach
+                }
+
+                when (field.name) {
+                    "id" -> {
+                        where.add("ID(${clazzName.decapitalize()}) = $fieldValue")
+                    }
+                    else -> {
+                        if (fieldValue != null)
+                            params.add("${field.name}: \"$fieldValue\"")
+                    }
+                }
+            }
+
+            where.add("ID(${clazzRName.decapitalize()}) = $relatedNodeId")
+
+            where.addAll(filter.filters)
+
+            clazz::class.memberProperties.forEach { property ->
+                val observeRelationship = property.findAnnotation<ObserveRelationship>()
+
+                observeRelationship?.relationName?.forEach { relationName ->
+                    returnItems.add("((${clazzRName.decapitalize()}) - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}")
+                }
+            }
+
+            val matchQuery =
+                "(${clazzName.decapitalize()}: ${clazzName.capitalize()} { ${params.distinct().joinToString(
+                    ", "
+                )} }), (${clazzRName.decapitalize()}: ${clazzRName.capitalize()})"
+
+            val query = "MATCH $matchQuery ${if (!where.isEmpty()) {
+                "WHERE (${where.distinct().joinToString(" AND ")})"
+            } else {
+                ""
+            }} RETURN ${returnItems.distinct().joinToString(", ")} SKIP $offset ${if (limit > 0) "LIMIT $limit" else ""}"
 
             println(query.trimAllSpaces())
 
@@ -170,10 +236,10 @@ abstract class GraphTable(
                 } catch (e: InvocationTargetException) {
                     return@map null
                 }
-            }.filterNotNull().joinToString(", ")
+            }.filterNotNull().distinct().joinToString(", ")
 
             val query =
-                "MATCH (${clazzName.decapitalize()}: ${clazzName.capitalize()}) WHERE (${if (where.isNotEmpty()) where.joinToString(
+                "MATCH (${clazzName.decapitalize()}: ${clazzName.capitalize()}) WHERE (${if (where.isNotEmpty()) where.distinct().joinToString(
                     " AND "
                 ) else ""}) ${if (setQuery.isNotBlank()) "SET $setQuery" else ""} RETURN (${clazzName.decapitalize()})"
 
@@ -185,10 +251,7 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphRelationship> newRelationship(
-        firstNodeId: Long,
-        secondNodeId: Long
-    ): GraphRelationship? {
+    inline fun <reified T : GraphRelationship> newRelationship(firstNodeId: Long, secondNodeId: Long): GraphRelationship? {
         return driver.session().readTransaction { transaction ->
             val clazz = T::class.constructors.first().call()
 
@@ -204,10 +267,7 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphRelationship> deleteRelationship(
-        firstNodeId: Long,
-        secondNodeId: Long
-    ): Long {
+    inline fun <reified T : GraphRelationship> deleteRelationship(firstNodeId: Long, secondNodeId: Long): Long {
         return driver.session().readTransaction { transaction ->
             val clazz = T::class.constructors.first().call()
 
@@ -221,12 +281,7 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode, reified R : GraphRelationship> findRelationshipNode(
-        nodeId: Long,
-        limit: Long = 20,
-        offset: Long = 0,
-        block: T.(Filter) -> Unit
-    ): List<T> {
+    inline fun <reified T : GraphNode, reified R : GraphRelationship> findRelationshipNode(nodeId: Long, limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
         val filter = Filter(T::class.java)
 
         val relationshipName = R::class.java.name
@@ -269,16 +324,29 @@ abstract class GraphTable(
                 "(a) - [${relationshipName.decapitalize()}: ${relationshipName.capitalize()}] -> (${clazzName.decapitalize()}: ${clazzName.capitalize()})"
 
             val query = "MATCH $matchQuery WHERE (${if (!where.isEmpty()) {
-                "WHERE (${where.joinToString(" AND ")})"
+                where.distinct().joinToString(" AND ")
             } else {
                 ""
-            }}) RETURN (${clazzName.decapitalize()}) SKIP $offset LIMIT $limit"
+            }}) RETURN (${clazzName.decapitalize()}) SKIP $offset ${if (limit > 0) "LIMIT $limit" else ""}"
 
             println(query.trimAllSpaces())
 
             return@readTransaction transaction.run(query).list { record ->
                 record.parseToNode<T>()
             }
+        }
+    }
+
+    inline fun <reified T : GraphRelationship> relatedWith(firstNodeId: Long, secondNodeId: Long): Boolean {
+        return driver.session().readTransaction { transaction ->
+            val clazz = T::class.constructors.first().call()
+
+            val clazzName = clazz::class.java.name
+
+            val query = "MATCH (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) WHERE (ID(a) = $firstNodeId AND ID(b) = $secondNodeId) RETURN ${clazzName.decapitalize()};"
+            println(query.trimAllSpaces())
+
+            return@readTransaction transaction.run(query).list().size.toLong() > 0
         }
     }
 
@@ -291,11 +359,16 @@ abstract class GraphTable(
             this::class.memberProperties.forEach { property ->
                 property as KMutableProperty<*>
 
-                val observeRelationship = property.findAnnotation<ObserveRelationship>()
+                    val observeRelationship = property.findAnnotation<ObserveRelationship>()
 
-                if (observeRelationship != null) {
-                    property.setter.call(this, record[observeRelationship.relationName.decapitalize()].asList().size)
-                }
+                    if (observeRelationship != null) {
+                        property.setter.call(this, observeRelationship.relationName.map {
+                            return@map if (record.containsKey(it))
+                                record[it].asList().size
+                            else
+                                0
+                        }.sum())
+                    }
 
                 when (property.name) {
                     "id" -> {

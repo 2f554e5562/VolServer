@@ -1,4 +1,3 @@
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import database.UserAlreadyExists
 import io.ktor.application.call
@@ -47,34 +46,38 @@ fun Routing.authTokenCreateByRefreshToken() =
 
             val refreshToken = tokenManager.parseToken(createTokenByRefreshTokenI.refreshToken)
 
-            val user = volDatabase.findUserById(refreshToken.userId)
+            if (refreshToken != null) {
+                val user = volDatabase.findUserById(refreshToken.userId)
 
-            if (user == null) {
-                respondUnauthorized()
-            } else {
-                val userRefreshToken = tokenManager.createRefreshToken(
-                    AuthUserData(
-                        user.id,
-                        user.login,
-                        user.password
-                    )
-                )
-
-                if (userRefreshToken.toString() == refreshToken.toString()) {
-                    respondOk(
-                        CreateTokenByRefreshTokenO(
-                            tokenManager.createToken(
-                                AuthUserData(
-                                    user.id,
-                                    user.login,
-                                    user.password
-                                )
-                            ).toString()
-                        ).writeValueAsString()
-                    )
-                } else {
+                if (user == null) {
                     respondUnauthorized()
+                } else {
+                    val userRefreshToken = tokenManager.createRefreshToken(
+                        AuthUserData(
+                            user.id,
+                            user.login,
+                            user.password
+                        )
+                    )
+
+                    if (userRefreshToken.toString() == refreshToken.toString()) {
+                        respondOk(
+                            CreateTokenByRefreshTokenO(
+                                tokenManager.createToken(
+                                    AuthUserData(
+                                        user.id,
+                                        user.login,
+                                        user.password
+                                    )
+                                ).toString()
+                            ).writeValueAsString()
+                        )
+                    } else {
+                        respondUnauthorized()
+                    }
                 }
+            } else {
+                respondUnauthorized()
             }
         } catch (e: Exception) {
             e.printStackTrace()

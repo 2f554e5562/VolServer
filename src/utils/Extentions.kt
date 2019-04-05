@@ -55,36 +55,40 @@ suspend inline fun PipelineContext<Unit, ApplicationCall>.checkPermission(
 ) {
     val token = tokenManager.parseToken(call.request.headers["Access-Token"] ?: throw IllegalStateException())
 
-    val user = volDatabase.findUserById(token.userId)
+    if (token != null) {
+        val user = volDatabase.findUserById(token.userId)
 
-    if (user == null) {
-        respondUnauthorized()
-    } else {
-        val userFullData = UserData(
-            user.id,
-            user.firstName,
-            user.lastName,
-            user.middleName,
-            user.birthday,
-            user.about,
-            user.phoneNumber,
-            user.image,
-            user.email,
-            user.link
-        )
-
-        val userToken = tokenManager.createToken(
-            AuthUserData(
-                user.id,
-                user.login,
-                user.password
-            )
-        )
-
-        if (token.toString() == userToken.toString()) {
-            block(token, userFullData)
-        } else {
+        if (user == null) {
             respondUnauthorized()
+        } else {
+            val userFullData = UserData(
+                user.id,
+                user.firstName,
+                user.lastName,
+                user.middleName,
+                user.birthday,
+                user.about,
+                user.phoneNumber,
+                user.image,
+                user.email,
+                user.link
+            )
+
+            val userToken = tokenManager.createToken(
+                AuthUserData(
+                    user.id,
+                    user.login,
+                    user.password
+                )
+            )
+
+            if (token.toString() == userToken.toString()) {
+                block(token, userFullData)
+            } else {
+                respondUnauthorized()
+            }
         }
+    } else {
+        respondUnauthorized()
     }
 }

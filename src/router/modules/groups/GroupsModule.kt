@@ -31,7 +31,8 @@ fun Routing.groupsCreate() =
                             group.image,
                             group.link,
                             group.creatorId,
-                            group.joined > 0
+                            group.joined > 0,
+                            group.administrated > 0
                         )
                     ).writeValueAsString()
                 )
@@ -46,14 +47,14 @@ fun Routing.groupsCreate() =
 
 
 fun Routing.groupsFind() =
-    post("/groups/list/find") {
+    post("/groups/find/list") {
         try {
             val groupFindI = json.readValue<GroupsFindI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
                 respondOk(
                     GroupsFindO(
-                        volDatabase.findGroupsByParameters(groupFindI.parameters, groupFindI.offset, groupFindI.amount)
+                        volDatabase.findGroupsByParameters(user.id, groupFindI.parameters, groupFindI.offset, groupFindI.amount)
                     ).writeValueAsString()
                 )
             }
@@ -90,12 +91,12 @@ fun Routing.groupsEdit() =
 
 
 fun Routing.groupsJoin() =
-    post("/groups/join") {
+    post("/groups/leave") {
         try {
             val groupsEditI = json.readValue<GroupsJoinI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val successful = volDatabase.joinGroup(groupsEditI.groupId, user.id)
+                val successful = volDatabase.leaveGroup(groupsEditI.groupId, user.id)
 
                 if (successful) {
                     respondOk(
@@ -114,22 +115,35 @@ fun Routing.groupsJoin() =
     }
 
 
-fun Routing.groupsLeave() =
-    post("/groups/leave") {
+fun Routing.groupsApplyCode() =
+    post("/groups/code/apply") {
         try {
-            val groupsEditI = json.readValue<GroupsLeaveI>(call.receive<ByteArray>())
-
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val successful = volDatabase.leaveGroup(groupsEditI.groupId, user.id)
+                val applyCodeI = json.readValue<ApplyCodeI>(call.receive<ByteArray>())
 
-                if (successful) {
-                    respondOk(
-                        GroupsLeaveO(
-                            successful
-                        ).writeValueAsString()
-                    )
+                val code = tokenManager.parseCode(applyCodeI.code)
+
+                if (code != null) {
+                    val creatorUser = volDatabase.findUserById(code.userId)
+
+                    if (creatorUser != null) {
+                        val rightCode = tokenManager.createCode(code.administratorPermission, code.nodeId, tokenManager.createToken(AuthUserData(creatorUser.id, creatorUser.login, creatorUser.password)), user.id)
+
+                        if (rightCode.toString() == applyCodeI.code) {
+                            respondOk(
+                                ApplyCodeO(
+                                    true
+                                ).writeValueAsString()
+                            )
+                            volDatabase.joinGroup(code.administratorPermission, code.nodeId, user.id)
+                        } else {
+                            respondForbidden()
+                        }
+                    } else {
+                        respondForbidden()
+                    }
                 } else {
-                    respondNotFound()
+                    respondForbidden()
                 }
             }
         } catch (e: Exception) {
@@ -137,3 +151,29 @@ fun Routing.groupsLeave() =
             respondBadRequest()
         }
     }
+
+
+fun Routing.groupsCreateCode() =
+    post("/groups/code/create") {
+        try {
+            val createCodeI = json.readValue<CreateCodeI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                val permission = volDatabase.isAdministrator(user.id, createCodeI.targetId)
+
+                if (permission) {
+                    respondOk(
+                        CreateCodeO(
+                            tokenManager.createCode(createCodeI.administrator, createCodeI.targetId, token, createCodeI.targetUserId).toString()
+                        ).writeValueAsString()
+                    )
+                } else {
+                    respondForbidden()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
+

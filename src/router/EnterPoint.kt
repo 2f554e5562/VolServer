@@ -1,29 +1,30 @@
 package router
 
 import DatabaseModule
+import TokenManager
 import authTokenCreateByLoginAndPassword
 import authTokenCreateByRefreshToken
 import authUsersCreate
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import imageUpload
-import io.ktor.application.Application
-import io.ktor.routing.routing
-import usersFind
-import usersProfileGet
-import TokenManager
 import eventsCreate
 import eventsEdit
 import eventsFind
 import eventsJoin
-import eventsLeave
 import eventsLike
+import eventsLiked
+import groupsApplyCode
 import groupsCreate
+import groupsCreateCode
 import groupsEdit
 import groupsFind
 import groupsJoin
-import groupsLeave
 import imageLoad
+import imageUpload
+import io.ktor.application.Application
+import io.ktor.routing.routing
+import usersFind
 import usersProfileEdit
+import usersProfileGet
 
 val volDatabase = DatabaseModule()
 val tokenManager = TokenManager()
@@ -46,6 +47,7 @@ fun Application.module() {
 
         usersProfileEdit()
 
+
         groupsCreate()
 
         groupsEdit()
@@ -54,7 +56,10 @@ fun Application.module() {
 
         groupsJoin()
 
-        groupsLeave()
+        groupsCreateCode()
+
+        groupsApplyCode()
+
 
         eventsCreate()
 
@@ -64,9 +69,10 @@ fun Application.module() {
 
         eventsJoin()
 
-        eventsLeave()
-
         eventsLike()
+
+        eventsLiked()
+
 
         imageUpload()
 

@@ -1,3 +1,3 @@
 annotation class ObserveRelationship(
-    val relationName: String
+    vararg val relationName: String
 )

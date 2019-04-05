@@ -17,26 +17,34 @@ fun Routing.eventsCreate() =
             val eventCreateI = json.readValue<EventCreateI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val event = volDatabase.createEvent(
-                    eventCreateI.data, user.id
-                )
+                val permission = volDatabase.findUserGroups(user.id, GroupDataSearch(
+                    canPost = true
+                ), 0, -1)
 
-                respondCreated(
-                    EventCreateO(
-                        EventFullData(
-                            event.id,
-                            event.title,
-                            user.id,
-                            event.place,
-                            event.datetime,
-                            event.duration,
-                            event.description,
-                            event.link,
-                            event.joined > 0,
-                            event.liked > 0
-                        )
-                    ).writeValueAsString()
-                )
+                if (permission.isNotEmpty()) {
+                    val event = volDatabase.createEvent(
+                        eventCreateI.data, user.id
+                    )
+
+                    respondCreated(
+                        EventCreateO(
+                            EventFullData(
+                                event.id,
+                                event.title,
+                                user.id,
+                                event.place,
+                                event.datetime,
+                                event.duration,
+                                event.description,
+                                event.link,
+                                event.joined > 0,
+                                event.liked > 0
+                            )
+                        ).writeValueAsString()
+                    )
+                } else {
+                    respondForbidden()
+                }
             }
         } catch (e: EventAlreadyExists) {
             respondConflict()
@@ -48,7 +56,7 @@ fun Routing.eventsCreate() =
 
 
 fun Routing.eventsFind() =
-    post("/events/list/find") {
+    post("/events/find/list") {
         try {
             val eventsFindI = json.readValue<EventsFindI>(call.receive<ByteArray>())
 
@@ -68,6 +76,7 @@ fun Routing.eventsFind() =
             respondBadRequest()
         }
     }
+
 
 fun Routing.eventsEdit() =
     post("/events/edit") {
@@ -101,7 +110,11 @@ fun Routing.eventsJoin() =
             val eventsJoinI = json.readValue<EventsJoinI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val successful = volDatabase.joinEvent(eventsJoinI.eventId, user.id)
+                val successful = if (eventsJoinI.state) {
+                    volDatabase.joinEvent(eventsJoinI.eventId, user.id)
+                } else {
+                    volDatabase.leaveEvent(eventsJoinI.eventId, user.id)
+                }
 
                 if (successful) {
                     respondOk(
@@ -120,17 +133,17 @@ fun Routing.eventsJoin() =
     }
 
 
-fun Routing.eventsLeave() =
-    post("/events/leave") {
+fun Routing.eventsLike() =
+    post("/events/like") {
         try {
-            val eventsLeaveI = json.readValue<EventsLeaveI>(call.receive<ByteArray>())
+            val eventsLikeI = json.readValue<EventsLikeI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val successful = volDatabase.leaveEvent(eventsLeaveI.eventId, user.id)
+                val successful = volDatabase.likeEvent(eventsLikeI.eventId, user.id, eventsLikeI.state)
 
                 if (successful) {
                     respondOk(
-                        EventsLeaveO(
+                        EventsLikeO(
                             successful
                         ).writeValueAsString()
                     )
@@ -144,23 +157,20 @@ fun Routing.eventsLeave() =
         }
     }
 
-fun Routing.eventsLike() =
-    post("/events/like") {
+
+fun Routing.eventsLiked() =
+    post("/events/find/liked") {
         try {
-            val eventsLikeI = json.readValue<EventsLikeI>(call.receive<ByteArray>())
+            val eventsLikedI = json.readValue<EventsLikedI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val successful = volDatabase.likeEvent(eventsLikeI.eventId, user.id, eventsLikeI.state)
+                val likedEvents = volDatabase.findLikedEvents(eventsLikedI.userId ?: user.id, eventsLikedI.offset, eventsLikedI.amount)
 
-                if (successful) {
-                    respondOk(
-                        EventsLeaveO(
-                            successful
-                        ).writeValueAsString()
-                    )
-                } else {
-                    respondNotFound()
-                }
+                respondOk(
+                    EventsLikedO(
+                        likedEvents
+                    ).writeValueAsString()
+                )
             }
         } catch (e: Exception) {
             e.printStackTrace()

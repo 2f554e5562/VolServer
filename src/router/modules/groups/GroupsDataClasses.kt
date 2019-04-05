@@ -28,18 +28,11 @@ data class GroupsEditO(
 )
 
 data class GroupsJoinI(
-    @JsonProperty("group_id") val groupId: Long
+    @JsonProperty("group_id") val groupId: Long,
+    @JsonProperty("state") val state: Boolean
 )
 
 data class GroupsJoinO(
-    @JsonProperty("successful") val successful: Boolean
-)
-
-data class GroupsLeaveI(
-    @JsonProperty("group_id") val groupId: Long
-)
-
-data class GroupsLeaveO(
     @JsonProperty("successful") val successful: Boolean
 )
 
@@ -60,7 +53,8 @@ data class GroupFullData(
     @JsonProperty("image") val image: String?,
     @JsonProperty("link") val link: String?,
     @JsonProperty("creator_id") val creatorId: Long,
-    @JsonProperty("joined") val joined: Boolean
+    @JsonProperty("joined") val joined: Boolean,
+    @JsonProperty("administrated") val administrated: Boolean
 )
 
 data class GroupDataSearch(
@@ -69,7 +63,8 @@ data class GroupDataSearch(
     @JsonProperty("description") val description: String? = null,
     @JsonProperty("can_post") val canPost: Boolean? = null,
     @JsonProperty("link") val link: String? = null,
-    @JsonProperty("creator_ids") val creatorIds: List<Long>? = null
+    @JsonProperty("creator_ids") val creatorIds: List<Long>? = null,
+    @JsonProperty("administrator_ids") val administratorIds: List<Long>? = null
 )
 
 data class GroupDataEdit(

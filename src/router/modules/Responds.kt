@@ -28,6 +28,14 @@ suspend fun PipelineContext<Unit, ApplicationCall>.respondUnauthorized() =
         ).writeValueAsString()
     )
 
+suspend fun PipelineContext<Unit, ApplicationCall>.respondForbidden() =
+    call.respond(
+        HttpStatusCode.Forbidden,
+        ErrorMessage(
+            Messages.e403
+        ).writeValueAsString()
+    )
+
 suspend fun PipelineContext<Unit, ApplicationCall>.respondOk(message: String) =
     call.respond(
         HttpStatusCode.OK,

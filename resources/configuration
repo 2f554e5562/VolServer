@@ -1,0 +1,5 @@
+{
+    "graph_server_url": "bolt://194.1.239.114:7687",
+    "graph_server_user": "vol_server",
+    "graph_server_password": "2f4e623830"
+}

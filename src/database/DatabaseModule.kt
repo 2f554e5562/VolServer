@@ -174,31 +174,34 @@ class DatabaseModule {
     }
 
     fun editGroup(group: GroupDataEdit, groupId: Long, userId: Long): GroupFullData? {
-        return volGraphDatabase.editNode<GroupNode>(groupId) {filter ->
-            filter.add { className ->
-                "$className.creatorId = $userId"
+        return if (volGraphDatabase.findNodeRelatedWith<UserNode, GroupNode>(userId) { filter ->
+                id = groupId
+            }.isNotEmpty())
+            volGraphDatabase.editNode<GroupNode>(groupId) { filter ->
+                group.title?.let { title = it.trimAllSpaces() }
+                group.description?.let { description = it.trimAllSpaces() }
+                group.color?.let { color = it.trimAllSpaces() }
+                group.image?.let { image = it.trimAllSpaces() }
+                group.link?.let { link = it.trimAllSpaces() }
+            }.firstOrNull()?.let {
+                GroupFullData(
+                    it.id,
+                    it.title,
+                    it.description,
+                    it.color,
+                    it.image,
+                    it.link,
+                    it.creatorId,
+                    it.joined > 0,
+                    it.administrated > 0
+                )
             }
-            group.title?.let { title = it.trimAllSpaces() }
-            group.description?.let { description = it.trimAllSpaces() }
-            group.color?.let { color = it.trimAllSpaces() }
-            group.image?.let { image = it.trimAllSpaces() }
-            group.link?.let { link = it.trimAllSpaces() }
-        }.firstOrNull()?.let {
-            GroupFullData(
-                it.id,
-                it.title,
-                it.description,
-                it.color,
-                it.image,
-                it.link,
-                it.creatorId,
-                it.joined > 0
-            )
-        }
+        else
+            null
     }
 
-    fun findGroupsByParameters(parameters: GroupDataSearch, offset: Long, amount: Long): List<GroupFullData> {
-        return volGraphDatabase.findNode<GroupNode>(amount, offset) { filter ->
+    fun findGroupsByParameters(userId: Long, parameters: GroupDataSearch, offset: Long, amount: Long): List<GroupFullData> {
+        return volGraphDatabase.findNodeRelatedWith<UserNode, GroupNode>(userId, amount, offset) { filter ->
             parameters.ids?.let {
                 filter.add { className ->
                     "ID($className)" inList it
@@ -243,21 +246,85 @@ class DatabaseModule {
                 it.image,
                 it.link,
                 it.creatorId,
-                it.joined > 0
+                it.joined > 0,
+                it.administrated > 0
             )
         }
     }
 
-    fun joinGroup(groupId: Long, userId: Long): Boolean {
-        val createdRelationship = volGraphDatabase.newRelationship<GroupJoinedRelationship>(userId, groupId)
+    fun joinGroup(administrator: Boolean, groupId: Long, userId: Long): Boolean {
+        val createdRelationship = if (administrator)
+            volGraphDatabase.newRelationship<GroupAdministratorRelationship>(userId, groupId)
+        else {
+            volGraphDatabase.newRelationship<GroupJoinedRelationship>(userId, groupId)
+        }
 
         return createdRelationship != null
     }
 
     fun leaveGroup(groupId: Long, userId: Long): Boolean {
-        val deletedRelationships = volGraphDatabase.deleteRelationship<GroupJoinedRelationship>(userId, groupId)
+        val deletedRelationships = volGraphDatabase.deleteRelationship<GroupAdministratorRelationship>(userId, groupId) +
+                volGraphDatabase.deleteRelationship<GroupJoinedRelationship>(userId, groupId)
 
         return deletedRelationships > 0
+    }
+
+    fun findUserGroups(userId: Long, parameters: GroupDataSearch, offset: Long, amount: Long): List<GroupFullData> {
+        return volGraphDatabase.findRelationshipNode<GroupNode, GroupJoinedRelationship>(userId, amount, offset) { filter ->
+            parameters.ids?.let {
+                filter.add { className ->
+                    "ID($className)" inList it
+                }
+            }
+
+            parameters.title?.let {
+                filter.add { className ->
+                    "$className.title" like it
+                }
+            }
+
+            parameters.description?.let {
+                filter.add { className ->
+                    "$className.description" like it
+                }
+            }
+
+            parameters.canPost?.let {
+                filter.add { className ->
+                    "$className.canPost" equals it
+                }
+            }
+
+            parameters.link?.let {
+                filter.add { className ->
+                    "$className.link" like it
+                }
+            }
+
+            parameters.creatorIds?.let {
+                filter.add { className ->
+                    "$className.creatorId" inList it
+                }
+            }
+        }.map {
+            GroupFullData(
+                it.id,
+                it.title,
+                it.description,
+                it.color,
+                it.image,
+                it.link,
+                it.creatorId,
+                it.joined > 0,
+                it.administrated > 0
+            )
+        }
+    }
+
+    fun isAdministrator(userId: Long, groupId: Long): Boolean {
+        return volGraphDatabase.findNodeRelatedWith<UserNode, GroupNode>(userId) {
+            id = groupId
+        }.first().administrated > 0
     }
 
 
@@ -403,6 +470,23 @@ class DatabaseModule {
             volGraphDatabase.newRelationship<EventLikedRelationship>(userId, eventId) != null
         } else {
             volGraphDatabase.deleteRelationship<EventLikedRelationship>(userId, eventId) > 0
+        }
+    }
+
+    fun findLikedEvents(userId: Long, offset: Long, amount: Long): List<EventFullData> {
+        return volGraphDatabase.findRelationshipNode<EventNode, EventLikedRelationship>(userId, amount, offset){ }.map {
+            EventFullData(
+                it.id,
+                it.title,
+                it.creatorId,
+                it.place,
+                it.datetime,
+                it.duration,
+                it.description,
+                it.link,
+                it.joined > 0,
+                it.liked > 0
+            )
         }
     }
 }

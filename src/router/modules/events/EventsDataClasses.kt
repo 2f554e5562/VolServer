@@ -28,18 +28,11 @@ data class EventsEditO(
 )
 
 data class EventsJoinI(
-    @JsonProperty("event_id") val eventId: Long
+    @JsonProperty("event_id") val eventId: Long,
+    @JsonProperty("state") val state: Boolean
 )
 
 data class EventsJoinO(
-    @JsonProperty("successful") val successful: Boolean
-)
-
-data class EventsLeaveI(
-    @JsonProperty("event_id") val eventId: Long
-)
-
-data class EventsLeaveO(
     @JsonProperty("successful") val successful: Boolean
 )
 
@@ -50,6 +43,16 @@ data class EventsLikeI(
 
 data class EventsLikeO(
     @JsonProperty("successful") val successful: Boolean
+)
+
+data class EventsLikedI(
+    @JsonProperty("offset") val offset: Long,
+    @JsonProperty("amount") val amount: Long,
+    @JsonProperty("user_id") val userId: Long? = null
+)
+
+data class EventsLikedO(
+    @JsonProperty("events") val events: List<EventFullData>
 )
 
 

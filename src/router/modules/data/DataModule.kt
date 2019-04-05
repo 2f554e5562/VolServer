@@ -7,6 +7,7 @@ import io.ktor.response.respondBytes
 import io.ktor.routing.Routing
 import io.ktor.routing.post
 import router.json
+import router.tokenManager
 import java.io.File
 
 fun Routing.imageUpload() =

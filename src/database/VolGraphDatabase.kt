@@ -1,9 +1,13 @@
+import database.confFile
 import org.neo4j.driver.v1.AuthTokens
 import org.neo4j.driver.v1.GraphDatabase
 
 object VolGraphDatabase : GraphTable(
     "vol_graph",
-    GraphDatabase.driver("bolt://194.1.239.114:7687", AuthTokens.basic("vol_server", "2f4e623830"))
+    GraphDatabase.driver(
+        confFile.graphServerUrl,
+        AuthTokens.basic(confFile.graphServerUser, confFile.graphServerPassword)
+    )
 )
 
 class UserNode : GraphNode() {
@@ -27,8 +31,10 @@ class GroupNode : GraphNode() {
     var color by Nullable<String>()
     var image by Nullable<String>()
     var link by Nullable<String>()
-    @ObserveRelationship("groupJoinedRelationship")
+    @ObserveRelationship("groupJoinedRelationship", "groupAdministratorRelationship", "groupCreatorRelationship")
     var joined by NotNullable<Long>()
+    @ObserveRelationship("groupAdministratorRelationship", "groupCreatorRelationship")
+    var administrated by NotNullable<Long>()
 }
 
 class EventNode : GraphNode() {
@@ -48,6 +54,8 @@ class EventNode : GraphNode() {
 class GroupCreatorRelationship : GraphRelationship(UserNode::class.java, GroupNode::class.java)
 
 class GroupJoinedRelationship : GraphRelationship(UserNode::class.java, GroupNode::class.java)
+
+class GroupAdministratorRelationship : GraphRelationship(UserNode::class.java, GroupNode::class.java)
 
 class EventCreatorRelationship : GraphRelationship(UserNode::class.java, EventNode::class.java)
 
