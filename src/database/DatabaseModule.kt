@@ -163,7 +163,7 @@ class DatabaseModule {
                 creatorId = userId
             }
 
-            volGraphDatabase.newRelationship<CreatorRelationship>(userId, groupNode.id)
+            volGraphDatabase.newRelationship<GroupCreatorRelationship>(userId, groupNode.id)
 
             return groupNode
         } else {
@@ -189,7 +189,8 @@ class DatabaseModule {
                 it.color,
                 it.image,
                 it.link,
-                it.creatorId
+                it.creatorId,
+                it.joined
             )
         }
     }
@@ -239,25 +240,18 @@ class DatabaseModule {
                 it.color,
                 it.image,
                 it.link,
-                it.creatorId
+                it.creatorId,
+                it.joined
             )
         }
     }
 
-    fun findGroupsByCreator(creatorId: Long, offset: Long, amount: Long): List<GroupFullData> {
-        return volGraphDatabase.findRelationshipNode<GroupNode, CreatorRelationship>(creatorId,amount, offset) { filter ->
+    fun joinGroup(groupId: Long, userId: Long) {
+        volGraphDatabase.newRelationship<GroupJoinedRelationship>(userId, groupId)
+    }
 
-        }.map {
-            GroupFullData(
-                it.id,
-                it.title,
-                it.description,
-                it.color,
-                it.image,
-                it.link,
-                it.creatorId
-            )
-        }
+    fun leaveGroup(groupId: Long, userId: Long) {
+        volGraphDatabase.deleteRelationship<GroupJoinedRelationship>(userId, groupId)
     }
 
 
@@ -277,7 +271,7 @@ class DatabaseModule {
                 link = event.link
             }
 
-            volGraphDatabase.newRelationship<CreatorRelationship>(userId, eventNode.id)
+            volGraphDatabase.newRelationship<EventCreatorRelationship>(userId, eventNode.id)
 
             return eventNode
         } else {
@@ -380,5 +374,13 @@ class DatabaseModule {
                 it.link
             )
         }
+    }
+
+    fun joinEvent(eventId: Long, userId: Long) {
+        volGraphDatabase.newRelationship<EventJoinedRelationship>(userId, eventId)
+    }
+
+    fun leaveEvent(eventId: Long, userId: Long) {
+        volGraphDatabase.deleteRelationship<EventJoinedRelationship>(userId, eventId)
     }
 }

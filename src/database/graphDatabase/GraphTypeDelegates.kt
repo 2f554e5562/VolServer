@@ -1,26 +1,35 @@
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
-class NotNullable<T : Any> {
+open class NotNullable<T : Any> {
     private var value: T? = null
 
+    var observableRelation: String? = null
+
     @Throws(IllegalStateException::class)
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): T {
+    open operator fun getValue(thisRef: Any?, property: KProperty<*>): T {
         return value ?: throw IllegalStateException("Property ${property.name} not initialized.")
     }
 
-    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
+    open operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
         this.value = value
+    }
+
+    inline fun <reified R : GraphRelationship> observeRelation(): NotNullable<T> {
+        observableRelation = R::class.java.name
+
+        return this
     }
 }
 
-class Nullable<T : Any?> {
+open class Nullable<T : Any?> {
     private var value: T? = null
 
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): T? {
+    open operator fun getValue(thisRef: Any?, property: KProperty<*>): T? {
         return value
     }
 
-    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T?) {
+    open operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T?) {
         this.value = value
     }
 }

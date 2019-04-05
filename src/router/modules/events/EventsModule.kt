@@ -95,33 +95,64 @@ fun Routing.eventsEdit(
         }
     }
 
-//fun Routing.eventsFindByUser(
-//    json: ObjectMapper,
-//    tokenManager: TokenManager,
-//    volDatabase: DatabaseModule
-//) =
-//    post("/events/list/get/byUser") {
-//        try {
-//            val eventsFindI = json.readValue<EventsFindByUserI>(call.receive<ByteArray>())
-//
-//            val relation = when (eventsFindI.relation) {
-//                0 -> "any"
-//                1 -> "creatorOf"
-//                2 -> "participantOf"
-//
-//                else -> throw IllegalStateException("Incorrect user -> event relation")
-//            }
-//
-//            checkPermission(tokenManager, volDatabase) { token, user ->
-//                respondOk(
-//                    EventsFindByUserO(
-//                        volDatabase.findEventsByUser(eventsFindI.userId, eventsFindI.offset, eventsFindI.amount, relation)
-//                    ).writeValueAsString()
-//                )
-//            }
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//            respondBadRequest()
-//        }
-//    }
 
+fun Routing.eventsJoin(
+    json: ObjectMapper,
+    tokenManager: TokenManager,
+    volDatabase: DatabaseModule
+) =
+    post("/events/join") {
+        try {
+            val eventsJoinI = json.readValue<EventsJoinI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                val successful = true
+
+                volDatabase.joinEvent(eventsJoinI.eventId, user.id)
+
+                if (successful) {
+                    respondOk(
+                        GroupsJoinO(
+                            "Successful"
+                        ).writeValueAsString()
+                    )
+                } else {
+                    respondNotFound()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
+
+
+fun Routing.eventsLeave(
+    json: ObjectMapper,
+    tokenManager: TokenManager,
+    volDatabase: DatabaseModule
+) =
+    post("/events/leave") {
+        try {
+            val eventsLeaveI = json.readValue<EventsLeaveI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                val successful = true
+
+                volDatabase.leaveEvent(eventsLeaveI.eventId, user.id)
+
+                if (successful) {
+                    respondOk(
+                        GroupsLeaveO(
+                            "Successful"
+                        ).writeValueAsString()
+                    )
+                } else {
+                    respondNotFound()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }

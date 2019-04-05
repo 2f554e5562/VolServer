@@ -1,8 +1,8 @@
 import org.neo4j.driver.v1.Driver
 import org.neo4j.driver.v1.Record
-import java.lang.IllegalStateException
 import java.lang.reflect.InvocationTargetException
 import kotlin.reflect.KMutableProperty
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
@@ -24,6 +24,18 @@ abstract class GraphTable(
         val clazzName = clazz::class.java.name
 
         return driver.session().readTransaction { transaction ->
+            val returnItems = mutableListOf<String>()
+
+            returnItems.add("(${clazzName.decapitalize()})")
+
+            clazz::class.memberProperties.forEach { property ->
+                val observeRelationship = property.findAnnotation<ObserveRelationship>()
+
+                if (observeRelationship != null) {
+                    returnItems.add("(() - [:${observeRelationship.relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${observeRelationship.relationName.decapitalize()}")
+                }
+            }
+
             val query =
                 "CREATE (${clazzName.decapitalize()}: ${clazzName.capitalize()} { ${clazz::class.memberProperties.map { field ->
                     field.isAccessible = true
@@ -44,7 +56,7 @@ abstract class GraphTable(
                         }
                     else
                         null
-                }.filterNotNull().joinToString(", ")} }) RETURN (${clazzName.decapitalize()})"
+                }.filterNotNull().joinToString(", ")} }) RETURN ${returnItems.joinToString(", ")}"
 
             println(query.trimAllSpaces())
 
@@ -54,7 +66,11 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode> findNode(limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
+    inline fun <reified T : GraphNode> findNode(
+        limit: Long = 20,
+        offset: Long = 0,
+        block: T.(Filter) -> Unit
+    ): List<T> {
         val filter = Filter(T::class.java)
 
         val clazz = T::class.constructors.first().call().apply {
@@ -66,6 +82,9 @@ abstract class GraphTable(
         return driver.session().readTransaction { transaction ->
             val params = mutableListOf<String>()
             val where = mutableListOf<String>()
+            val returnItems = mutableListOf<String>()
+
+            returnItems.add("(${clazzName.decapitalize()})")
 
             clazz::class.memberProperties.forEach { field ->
                 field.isAccessible = true
@@ -89,7 +108,13 @@ abstract class GraphTable(
 
             where.addAll(filter.filters)
 
-            val returnQuery = clazzName.decapitalize()
+            clazz::class.memberProperties.forEach { property ->
+                val observeRelationship = property.findAnnotation<ObserveRelationship>()
+
+                if (observeRelationship != null) {
+                    returnItems.add("(() - [:${observeRelationship.relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${observeRelationship.relationName.decapitalize()}")
+                }
+            }
 
             val matchQuery =
                 "${clazzName.decapitalize()}: ${clazzName.capitalize()} { ${params.joinToString(
@@ -100,7 +125,7 @@ abstract class GraphTable(
                 "WHERE (${where.joinToString(" AND ")})"
             } else {
                 ""
-            }} RETURN ($returnQuery) SKIP $offset LIMIT $limit"
+            }} RETURN ${returnItems.joinToString(", ")} SKIP $offset LIMIT $limit"
 
             println(query.trimAllSpaces())
 
@@ -148,7 +173,9 @@ abstract class GraphTable(
             }.filterNotNull().joinToString(", ")
 
             val query =
-                "MATCH (${clazzName.decapitalize()}: ${clazzName.capitalize()}) WHERE (${if (where.isNotEmpty()) where.joinToString(" AND ") else ""}) ${if (setQuery.isNotBlank()) "SET $setQuery" else ""} RETURN (${clazzName.decapitalize()})"
+                "MATCH (${clazzName.decapitalize()}: ${clazzName.capitalize()}) WHERE (${if (where.isNotEmpty()) where.joinToString(
+                    " AND "
+                ) else ""}) ${if (setQuery.isNotBlank()) "SET $setQuery" else ""} RETURN (${clazzName.decapitalize()})"
 
             println(query.trimAllSpaces())
 
@@ -158,13 +185,34 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphRelationship> newRelationship(firstNodeId: Long, secondNodeId: Long): GraphRelationship {
+    inline fun <reified T : GraphRelationship> deleteRelationship(
+        firstNodeId: Long,
+        secondNodeId: Long
+    ) {
         return driver.session().readTransaction { transaction ->
             val clazz = T::class.constructors.first().call()
 
             val clazzName = clazz::class.java.name
 
-            val query = "MATCH (a), (b) WHERE ( ID(a) = $firstNodeId AND ID(b) = $secondNodeId) MERGE (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) RETURN (${clazzName.decapitalize()});"
+            val query =
+                "MATCH (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) WHERE (ID(a) = $firstNodeId AND ID(b) = $secondNodeId) DELETE ${clazzName.decapitalize()};"
+            println(query.trimAllSpaces())
+
+            transaction.run(query)
+        }
+    }
+
+    inline fun <reified T : GraphRelationship> newRelationship(
+        firstNodeId: Long,
+        secondNodeId: Long
+    ): GraphRelationship {
+        return driver.session().readTransaction { transaction ->
+            val clazz = T::class.constructors.first().call()
+
+            val clazzName = clazz::class.java.name
+
+            val query =
+                "MATCH (a), (b) WHERE ( ID(a) = $firstNodeId AND ID(b) = $secondNodeId) MERGE (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) RETURN (${clazzName.decapitalize()});"
             println(query.trimAllSpaces())
 
             return@readTransaction transaction.run(query).list { record ->
@@ -173,7 +221,12 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode, reified R : CreatorRelationship> findRelationshipNode(nodeId: Long, limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
+    inline fun <reified T : GraphNode, reified R : GraphRelationship> findRelationshipNode(
+        nodeId: Long,
+        limit: Long = 20,
+        offset: Long = 0,
+        block: T.(Filter) -> Unit
+    ): List<T> {
         val filter = Filter(T::class.java)
 
         val relationshipName = R::class.java.name
@@ -212,7 +265,8 @@ abstract class GraphTable(
 
             where.add("ID(a) = $nodeId")
 
-            val matchQuery = "(a) - [${relationshipName.decapitalize()}: ${relationshipName.capitalize()}] -> (${clazzName.decapitalize()}: ${clazzName.capitalize()})"
+            val matchQuery =
+                "(a) - [${relationshipName.decapitalize()}: ${relationshipName.capitalize()}] -> (${clazzName.decapitalize()}: ${clazzName.capitalize()})"
 
             val query = "MATCH $matchQuery WHERE (${if (!where.isEmpty()) {
                 "WHERE (${where.joinToString(" AND ")})"
@@ -229,11 +283,19 @@ abstract class GraphTable(
     }
 
     inline fun <reified T : GraphNode> Record.parseToNode(): T {
-        val node = this[T::class.java.name.decapitalize()].asNode()
+        val record = this
+
+        val node = record[T::class.java.name.decapitalize()].asNode()
 
         return T::class.constructors.first().call().apply {
             this::class.memberProperties.forEach { property ->
                 property as KMutableProperty<*>
+
+                val observeRelationship = property.findAnnotation<ObserveRelationship>()
+
+                if (observeRelationship != null) {
+                    property.setter.call(this, record[observeRelationship.relationName.decapitalize()].asList().size)
+                }
 
                 when (property.name) {
                     "id" -> {

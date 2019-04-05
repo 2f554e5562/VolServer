@@ -14,9 +14,13 @@ import TokenManager
 import eventsCreate
 import eventsEdit
 import eventsFind
+import eventsJoin
+import eventsLeave
 import groupsCreate
 import groupsEdit
 import groupsFind
+import groupsJoin
+import groupsLeave
 import imageLoad
 import usersProfileEdit
 
@@ -47,13 +51,19 @@ fun Application.module() {
 
         groupsFind(json, tokenManager, volDatabase)
 
+        groupsJoin(json, tokenManager, volDatabase)
+
+        groupsLeave(json, tokenManager, volDatabase)
+
         eventsCreate(json, tokenManager, volDatabase)
 
         eventsEdit(json, tokenManager, volDatabase)
 
         eventsFind(json, tokenManager, volDatabase)
 
-//        eventsFindByUser(json, tokenManager, volDatabase)
+        eventsJoin(json, tokenManager, volDatabase)
+
+        eventsLeave(json, tokenManager, volDatabase)
 
         imageUpload()
 

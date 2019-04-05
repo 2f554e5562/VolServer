@@ -38,6 +38,22 @@ data class EventsEditO(
     @JsonProperty("new_data") val newData: EventFullData
 )
 
+data class EventsJoinI(
+    @JsonProperty("event_id") val eventId: Long
+)
+
+data class EventsJoinO(
+    @JsonProperty("message") val message: String
+)
+
+data class EventsLeaveI(
+    @JsonProperty("event_id") val eventId: Long
+)
+
+data class EventsLeaveO(
+    @JsonProperty("message") val message: String
+)
+
 
 data class EventCreateData(
     @JsonProperty("title") val title: String,

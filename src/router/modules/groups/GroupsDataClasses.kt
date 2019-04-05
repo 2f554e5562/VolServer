@@ -27,6 +27,22 @@ data class GroupsEditO(
     @JsonProperty("new_data") val newData: GroupFullData
 )
 
+data class GroupsJoinI(
+    @JsonProperty("group_id") val groupId: Long
+)
+
+data class GroupsJoinO(
+    @JsonProperty("message") val message: String
+)
+
+data class GroupsLeaveI(
+    @JsonProperty("group_id") val groupId: Long
+)
+
+data class GroupsLeaveO(
+    @JsonProperty("message") val message: String
+)
+
 
 data class GroupCreateData(
     @JsonProperty("title") val title: String,
@@ -43,7 +59,8 @@ data class GroupFullData(
     @JsonProperty("color") val color: String?,
     @JsonProperty("image") val image: String?,
     @JsonProperty("link") val link: String?,
-    @JsonProperty("creator_id") val creatorId: Long
+    @JsonProperty("creator_id") val creatorId: Long,
+    @JsonProperty("joined") val joined: Long
 )
 
 data class GroupDataSearch(

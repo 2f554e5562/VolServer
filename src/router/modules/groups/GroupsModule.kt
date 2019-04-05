@@ -31,7 +31,8 @@ fun Routing.groupsCreate(
                             group.color,
                             group.image,
                             group.link,
-                            group.creatorId
+                            group.creatorId,
+                            group.joined
                         )
                     ).writeValueAsString()
                 )
@@ -84,6 +85,68 @@ fun Routing.groupsEdit(
                     respondOk(
                         GroupsEditO(
                             groupData
+                        ).writeValueAsString()
+                    )
+                } else {
+                    respondNotFound()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
+
+
+fun Routing.groupsJoin(
+    json: ObjectMapper,
+    tokenManager: TokenManager,
+    volDatabase: DatabaseModule
+) =
+    post("/groups/join") {
+        try {
+            val groupsEditI = json.readValue<GroupsJoinI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                val successful = true
+
+                volDatabase.joinGroup(groupsEditI.groupId, user.id)
+
+                if (successful) {
+                    respondOk(
+                        GroupsJoinO(
+                            "Successful"
+                        ).writeValueAsString()
+                    )
+                } else {
+                    respondNotFound()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
+
+
+fun Routing.groupsLeave(
+    json: ObjectMapper,
+    tokenManager: TokenManager,
+    volDatabase: DatabaseModule
+) =
+    post("/groups/leave") {
+        try {
+            val groupsEditI = json.readValue<GroupsLeaveI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                val successful = true
+
+                volDatabase.leaveGroup(groupsEditI.groupId, user.id)
+
+                if (successful) {
+                    respondOk(
+                        GroupsLeaveO(
+                            "Successful"
                         ).writeValueAsString()
                     )
                 } else {
