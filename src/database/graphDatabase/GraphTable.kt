@@ -185,39 +185,39 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphRelationship> deleteRelationship(
-        firstNodeId: Long,
-        secondNodeId: Long
-    ) {
-        return driver.session().readTransaction { transaction ->
-            val clazz = T::class.constructors.first().call()
-
-            val clazzName = clazz::class.java.name
-
-            val query =
-                "MATCH (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) WHERE (ID(a) = $firstNodeId AND ID(b) = $secondNodeId) DELETE ${clazzName.decapitalize()};"
-            println(query.trimAllSpaces())
-
-            transaction.run(query)
-        }
-    }
-
     inline fun <reified T : GraphRelationship> newRelationship(
         firstNodeId: Long,
         secondNodeId: Long
-    ): GraphRelationship {
+    ): GraphRelationship? {
         return driver.session().readTransaction { transaction ->
             val clazz = T::class.constructors.first().call()
 
             val clazzName = clazz::class.java.name
 
             val query =
-                "MATCH (a), (b) WHERE ( ID(a) = $firstNodeId AND ID(b) = $secondNodeId) MERGE (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) RETURN (${clazzName.decapitalize()});"
+                "MATCH (a${clazz.startNode?.let { ": ${it.name.capitalize()}" }}), (b${clazz.endNode?.let { ": ${it.name.capitalize()}" }}) WHERE (ID(a) = $firstNodeId AND ID(b) = $secondNodeId) MERGE (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) RETURN (${clazzName.decapitalize()});"
             println(query.trimAllSpaces())
 
             return@readTransaction transaction.run(query).list { record ->
                 record.parseToRelationship<T>()
-            }.first()
+            }.firstOrNull()
+        }
+    }
+
+    inline fun <reified T : GraphRelationship> deleteRelationship(
+        firstNodeId: Long,
+        secondNodeId: Long
+    ): Long {
+        return driver.session().readTransaction { transaction ->
+            val clazz = T::class.constructors.first().call()
+
+            val clazzName = clazz::class.java.name
+
+            val query =
+                "MATCH (a${clazz.startNode?.let { ": ${it.name.capitalize()}" }}) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b${clazz.endNode?.let { ": ${it.name.capitalize()}" }}) WHERE (ID(a) = $firstNodeId AND ID(b) = $secondNodeId) DELETE ${clazzName.decapitalize()} RETURN ${clazzName.decapitalize()};"
+            println(query.trimAllSpaces())
+
+            return@readTransaction transaction.run(query).list().size.toLong()
         }
     }
 
@@ -306,16 +306,18 @@ abstract class GraphTable(
                         if (node[property.name].isNull) return@forEach
 
                         when (property.returnType.javaType) {
-                            String::class.java ->
-                                property.setter.call(this, node[property.name].asString())
+                            String::class.java -> property.setter.call(this, node[property.name].asString())
+                            String::class -> property.setter.call(this, node[property.name].asString())
 
-                            Integer::class.java ->
-                                property.setter.call(this, node[property.name].asInt())
+                            Int::class.java -> property.setter.call(this, node[property.name].asInt())
+                            Int::class -> property.setter.call(this, node[property.name].asInt())
 
-                            Long::class.java ->
-                                property.setter.call(this, node[property.name].asLong())
+                            Long::class.java -> property.setter.call(this, node[property.name].asLong())
+                            java.lang.Long::class.java -> property.setter.call(this, node[property.name].asLong())
 
-                            else -> throw IllegalStateException("Illegal parse type.")
+                            else -> {
+                                throw IllegalStateException("Illegal parse type (${property.returnType.javaType}).")
+                            }
                         }
                     }
                 }
@@ -327,13 +329,9 @@ abstract class GraphTable(
         val relationship = this[T::class.java.name.decapitalize()].asRelationship()
 
         return T::class.constructors.first().call().apply {
-            this::class.memberProperties.forEach { property ->
-                property as KMutableProperty<*>
-
-                id = relationship.id()
-                startNodeId = relationship.startNodeId()
-                endNodeId = relationship.endNodeId()
-            }
+            id = relationship.id()
+            startNodeId = relationship.startNodeId()
+            endNodeId = relationship.endNodeId()
         }
     }
 }

@@ -27,7 +27,7 @@ class GroupNode : GraphNode() {
     var color by Nullable<String>()
     var image by Nullable<String>()
     var link by Nullable<String>()
-    @ObserveRelationship<GroupJoinedRelationship>
+    @ObserveRelationship("groupJoinedRelationship")
     var joined by NotNullable<Long>()
 }
 
@@ -39,14 +39,18 @@ class EventNode : GraphNode() {
     var duration by Nullable<Long>()
     var description by Nullable<String>()
     var link by Nullable<String>()
-    @ObserveRelationship<EventJoinedRelationship>
+    @ObserveRelationship("eventJoinedRelationship")
     var joined by NotNullable<Long>()
+    @ObserveRelationship("eventLikedRelationship")
+    var liked by NotNullable<Long>()
 }
 
-class GroupCreatorRelationship : GraphRelationship()
+class GroupCreatorRelationship : GraphRelationship(UserNode::class.java, GroupNode::class.java)
 
-class EventCreatorRelationship : GraphRelationship()
+class GroupJoinedRelationship : GraphRelationship(UserNode::class.java, GroupNode::class.java)
 
-class GroupJoinedRelationship : GraphRelationship()
+class EventCreatorRelationship : GraphRelationship(UserNode::class.java, EventNode::class.java)
 
-class EventJoinedRelationship : GraphRelationship()
+class EventJoinedRelationship : GraphRelationship(UserNode::class.java, EventNode::class.java)
+
+class EventLikedRelationship : GraphRelationship(UserNode::class.java, EventNode::class.java)

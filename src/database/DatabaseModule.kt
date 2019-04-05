@@ -1,3 +1,5 @@
+@file:Suppress("RemoveExplicitTypeArguments")
+
 import database.GroupAlreadyExists
 import database.UserAlreadyExists
 
@@ -190,7 +192,7 @@ class DatabaseModule {
                 it.image,
                 it.link,
                 it.creatorId,
-                it.joined
+                it.joined > 0
             )
         }
     }
@@ -241,17 +243,21 @@ class DatabaseModule {
                 it.image,
                 it.link,
                 it.creatorId,
-                it.joined
+                it.joined > 0
             )
         }
     }
 
-    fun joinGroup(groupId: Long, userId: Long) {
-        volGraphDatabase.newRelationship<GroupJoinedRelationship>(userId, groupId)
+    fun joinGroup(groupId: Long, userId: Long): Boolean {
+        val createdRelationship = volGraphDatabase.newRelationship<GroupJoinedRelationship>(userId, groupId)
+
+        return createdRelationship != null
     }
 
-    fun leaveGroup(groupId: Long, userId: Long) {
-        volGraphDatabase.deleteRelationship<GroupJoinedRelationship>(userId, groupId)
+    fun leaveGroup(groupId: Long, userId: Long): Boolean {
+        val deletedRelationships = volGraphDatabase.deleteRelationship<GroupJoinedRelationship>(userId, groupId)
+
+        return deletedRelationships > 0
     }
 
 
@@ -296,7 +302,9 @@ class DatabaseModule {
                 it.datetime,
                 it.duration,
                 it.description,
-                it.link
+                it.link,
+                it.joined > 0,
+                it.liked > 0
             )
         }
     }
@@ -371,16 +379,30 @@ class DatabaseModule {
                 it.datetime,
                 it.duration,
                 it.description,
-                it.link
+                it.link,
+                it.joined > 0,
+                it.liked > 0
             )
         }
     }
 
-    fun joinEvent(eventId: Long, userId: Long) {
-        volGraphDatabase.newRelationship<EventJoinedRelationship>(userId, eventId)
+    fun joinEvent(eventId: Long, userId: Long): Boolean {
+        val createdRelationship = volGraphDatabase.newRelationship<EventJoinedRelationship>(userId, eventId)
+
+        return createdRelationship != null
     }
 
-    fun leaveEvent(eventId: Long, userId: Long) {
-        volGraphDatabase.deleteRelationship<EventJoinedRelationship>(userId, eventId)
+    fun leaveEvent(eventId: Long, userId: Long): Boolean {
+        val deletedRelationships = volGraphDatabase.deleteRelationship<EventJoinedRelationship>(userId, eventId)
+
+        return deletedRelationships > 0
+    }
+
+    fun likeEvent(eventId: Long, userId: Long, state: Boolean): Boolean {
+        return if (state) {
+            volGraphDatabase.newRelationship<EventLikedRelationship>(userId, eventId) != null
+        } else {
+            volGraphDatabase.deleteRelationship<EventLikedRelationship>(userId, eventId) > 0
+        }
     }
 }

@@ -1,18 +1,17 @@
-import com.fasterxml.jackson.databind.ObjectMapper
+@file:Suppress("UNUSED_ANONYMOUS_PARAMETER")
+
 import com.fasterxml.jackson.module.kotlin.readValue
 import database.GroupAlreadyExists
 import io.ktor.application.call
 import io.ktor.request.receive
 import io.ktor.routing.Routing
 import io.ktor.routing.post
-import java.lang.IllegalStateException
+import router.json
+import router.tokenManager
+import router.volDatabase
 
 
-fun Routing.groupsCreate(
-    json: ObjectMapper,
-    tokenManager: TokenManager,
-    volDatabase: DatabaseModule
-) =
+fun Routing.groupsCreate() =
     post("/groups/create") {
         try {
             val groupCreateI = json.readValue<GroupCreateI>(call.receive<ByteArray>())
@@ -32,7 +31,7 @@ fun Routing.groupsCreate(
                             group.image,
                             group.link,
                             group.creatorId,
-                            group.joined
+                            group.joined > 0
                         )
                     ).writeValueAsString()
                 )
@@ -46,11 +45,7 @@ fun Routing.groupsCreate(
     }
 
 
-fun Routing.groupsFind(
-    json: ObjectMapper,
-    tokenManager: TokenManager,
-    volDatabase: DatabaseModule
-) =
+fun Routing.groupsFind() =
     post("/groups/list/find") {
         try {
             val groupFindI = json.readValue<GroupsFindI>(call.receive<ByteArray>())
@@ -69,11 +64,7 @@ fun Routing.groupsFind(
     }
 
 
-fun Routing.groupsEdit(
-    json: ObjectMapper,
-    tokenManager: TokenManager,
-    volDatabase: DatabaseModule
-) =
+fun Routing.groupsEdit() =
     post("/groups/edit") {
         try {
             val groupsEditI = json.readValue<GroupsEditI>(call.receive<ByteArray>())
@@ -98,24 +89,18 @@ fun Routing.groupsEdit(
     }
 
 
-fun Routing.groupsJoin(
-    json: ObjectMapper,
-    tokenManager: TokenManager,
-    volDatabase: DatabaseModule
-) =
+fun Routing.groupsJoin() =
     post("/groups/join") {
         try {
             val groupsEditI = json.readValue<GroupsJoinI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val successful = true
-
-                volDatabase.joinGroup(groupsEditI.groupId, user.id)
+                val successful = volDatabase.joinGroup(groupsEditI.groupId, user.id)
 
                 if (successful) {
                     respondOk(
                         GroupsJoinO(
-                            "Successful"
+                            successful
                         ).writeValueAsString()
                     )
                 } else {
@@ -129,24 +114,18 @@ fun Routing.groupsJoin(
     }
 
 
-fun Routing.groupsLeave(
-    json: ObjectMapper,
-    tokenManager: TokenManager,
-    volDatabase: DatabaseModule
-) =
+fun Routing.groupsLeave() =
     post("/groups/leave") {
         try {
             val groupsEditI = json.readValue<GroupsLeaveI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val successful = true
-
-                volDatabase.leaveGroup(groupsEditI.groupId, user.id)
+                val successful = volDatabase.leaveGroup(groupsEditI.groupId, user.id)
 
                 if (successful) {
                     respondOk(
                         GroupsLeaveO(
-                            "Successful"
+                            successful
                         ).writeValueAsString()
                     )
                 } else {

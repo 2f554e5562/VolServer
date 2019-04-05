@@ -16,6 +16,7 @@ import eventsEdit
 import eventsFind
 import eventsJoin
 import eventsLeave
+import eventsLike
 import groupsCreate
 import groupsEdit
 import groupsFind
@@ -24,49 +25,51 @@ import groupsLeave
 import imageLoad
 import usersProfileEdit
 
+val volDatabase = DatabaseModule()
+val tokenManager = TokenManager()
+val json = jacksonObjectMapper()
+
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
 @Suppress("unused") // Referenced in application.conf
 fun Application.module() {
-    val volDatabase = DatabaseModule()
-    val tokenManager = TokenManager()
-    val json = jacksonObjectMapper()
-
     routing {
-        authTokenCreateByLoginAndPassword(json, tokenManager, volDatabase)
+        authTokenCreateByLoginAndPassword()
 
-        authTokenCreateByRefreshToken(json, tokenManager, volDatabase)
+        authTokenCreateByRefreshToken()
 
-        authUsersCreate(json, tokenManager, volDatabase)
+        authUsersCreate()
 
-        usersProfileGet(json, tokenManager, volDatabase)
+        usersProfileGet()
 
-        usersFind(json, tokenManager, volDatabase)
+        usersFind()
 
-        usersProfileEdit(json, tokenManager, volDatabase)
+        usersProfileEdit()
 
-        groupsCreate(json, tokenManager, volDatabase)
+        groupsCreate()
 
-        groupsEdit(json, tokenManager, volDatabase)
+        groupsEdit()
 
-        groupsFind(json, tokenManager, volDatabase)
+        groupsFind()
 
-        groupsJoin(json, tokenManager, volDatabase)
+        groupsJoin()
 
-        groupsLeave(json, tokenManager, volDatabase)
+        groupsLeave()
 
-        eventsCreate(json, tokenManager, volDatabase)
+        eventsCreate()
 
-        eventsEdit(json, tokenManager, volDatabase)
+        eventsEdit()
 
-        eventsFind(json, tokenManager, volDatabase)
+        eventsFind()
 
-        eventsJoin(json, tokenManager, volDatabase)
+        eventsJoin()
 
-        eventsLeave(json, tokenManager, volDatabase)
+        eventsLeave()
+
+        eventsLike()
 
         imageUpload()
 
-        imageLoad(json)
+        imageLoad()
     }
 }

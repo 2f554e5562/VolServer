@@ -5,12 +5,11 @@ import io.ktor.application.call
 import io.ktor.request.receive
 import io.ktor.routing.Routing
 import io.ktor.routing.post
+import router.json
+import router.tokenManager
+import router.volDatabase
 
-fun Routing.authTokenCreateByLoginAndPassword(
-    json: ObjectMapper,
-    tokenManager: TokenManager,
-    volDatabase: DatabaseModule
-) =
+fun Routing.authTokenCreateByLoginAndPassword() =
     post("/auth/token/create/byLoginAndPassword") {
         try {
             val createTokenByLoginI = json.readValue<CreateTokenByLoginI>(call.receive<ByteArray>())
@@ -41,11 +40,7 @@ fun Routing.authTokenCreateByLoginAndPassword(
         }
     }
 
-fun Routing.authTokenCreateByRefreshToken(
-    json: ObjectMapper,
-    tokenManager: TokenManager,
-    volDatabase: DatabaseModule
-) =
+fun Routing.authTokenCreateByRefreshToken() =
     post("/auth/token/create/byRefreshToken") {
         try {
             val createTokenByRefreshTokenI = json.readValue<CreateTokenByRefreshTokenI>(call.receive<ByteArray>())
@@ -87,11 +82,7 @@ fun Routing.authTokenCreateByRefreshToken(
         }
     }
 
-fun Routing.authUsersCreate(
-    json: ObjectMapper,
-    tokenManager: TokenManager,
-    volDatabase: DatabaseModule
-) =
+fun Routing.authUsersCreate() =
     post("/users/create") {
         try {
             val createUserI = json.readValue<UsersCreateI>(call.receive<ByteArray>())

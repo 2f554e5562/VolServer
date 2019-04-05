@@ -1,4 +1,3 @@
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.application.call
 import io.ktor.http.ContentType
@@ -7,6 +6,7 @@ import io.ktor.request.receiveStream
 import io.ktor.response.respondBytes
 import io.ktor.routing.Routing
 import io.ktor.routing.post
+import router.json
 import java.io.File
 
 fun Routing.imageUpload() =
@@ -34,7 +34,7 @@ fun Routing.imageUpload() =
         }
     }
 
-fun Routing.imageLoad(json: ObjectMapper) =
+fun Routing.imageLoad() =
     post("/image/load") {
         try {
             val imageLoadI = json.readValue<ImageLoadI>(call.receive<ByteArray>())

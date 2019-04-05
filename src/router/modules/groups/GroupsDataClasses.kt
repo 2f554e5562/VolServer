@@ -32,7 +32,7 @@ data class GroupsJoinI(
 )
 
 data class GroupsJoinO(
-    @JsonProperty("message") val message: String
+    @JsonProperty("successful") val successful: Boolean
 )
 
 data class GroupsLeaveI(
@@ -40,7 +40,7 @@ data class GroupsLeaveI(
 )
 
 data class GroupsLeaveO(
-    @JsonProperty("message") val message: String
+    @JsonProperty("successful") val successful: Boolean
 )
 
 
@@ -60,7 +60,7 @@ data class GroupFullData(
     @JsonProperty("image") val image: String?,
     @JsonProperty("link") val link: String?,
     @JsonProperty("creator_id") val creatorId: Long,
-    @JsonProperty("joined") val joined: Long
+    @JsonProperty("joined") val joined: Boolean
 )
 
 data class GroupDataSearch(
