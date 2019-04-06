@@ -96,17 +96,16 @@ fun Routing.eventsEdit() =
             val eventsEditI = json.readValue<EventsEditI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
+                if (volDatabase.isEventCreator(user.id, eventsEditI.id)) {
+                    val eventData = volDatabase.editEvent(eventsEditI.newData, eventsEditI.id)
 
-                val eventData = volDatabase.editEvent(eventsEditI.newData, eventsEditI.id)
-
-                if (eventData != null) {
                     respondOk(
                         EventsEditO(
                             eventData
                         ).writeValueAsString()
                     )
                 } else {
-                    respondNotFound()
+                    respondForbidden()
                 }
             }
         } catch (e: Exception) {

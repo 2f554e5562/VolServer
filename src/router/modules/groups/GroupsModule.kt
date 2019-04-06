@@ -80,16 +80,14 @@ fun Routing.groupsEdit() =
             val groupsEditI = json.readValue<GroupsEditI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val groupData = volDatabase.editGroup(groupsEditI.newData, groupsEditI.id, user.id)
+                if (volDatabase.isGroupAdministrator(user.id, groupsEditI.id)) {
+                    val groupData = volDatabase.editGroup(groupsEditI.newData, groupsEditI.id)
 
-                if (groupData != null) {
                     respondOk(
                         GroupsEditO(
                             groupData
                         ).writeValueAsString()
                     )
-                } else {
-                    respondNotFound()
                 }
             }
         } catch (e: Exception) {
@@ -168,9 +166,7 @@ fun Routing.groupsCreateCode() =
             val createCodeI = json.readValue<CreateCodeI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val permission = volDatabase.isAdministrator(user.id, createCodeI.targetId)
-
-                if (permission) {
+                if (volDatabase.isGroupAdministrator(user.id, createCodeI.targetId)) {
                     respondOk(
                         CreateCodeO(
                             tokenManager.createCode(createCodeI.administrator, createCodeI.targetId, token, createCodeI.targetUserId).toString()

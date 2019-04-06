@@ -54,7 +54,7 @@ class DatabaseModule(
             image = user.image
             email = user.email
             link = user.link
-        }.firstOrNull()?.let {
+        }.let {
             UserData(
                 it.id,
                 it.firstName,
@@ -177,32 +177,27 @@ class DatabaseModule(
         }
     }
 
-    fun editGroup(group: GroupDataEdit, groupId: Long, userId: Long): GroupFullData? {
-        return if (volGraphDatabase.findNodeRelatedWith<UserNode, GroupNode>(userId) {
-                id = groupId
-            }.isNotEmpty())
-            volGraphDatabase.editNode<GroupNode>(groupId) {
-                group.title?.let { title = it.trimAllSpaces() }
-                group.description?.let { description = it.trimAllSpaces() }
-                group.color?.let { color = it.trimAllSpaces() }
-                group.image?.let { image = it.trimAllSpaces() }
-                group.link?.let { link = it.trimAllSpaces() }
-            }.firstOrNull()?.let {
-                GroupFullData(
-                    it.id,
-                    it.title,
-                    it.description,
-                    it.color,
-                    it.image,
-                    it.link,
-                    it.creatorId,
-                    it.joined > 0,
-                    it.administrated > 0,
-                    it.memberCount
-                )
-            }
-        else
-            null
+    fun editGroup(group: GroupDataEdit, groupId: Long): GroupFullData {
+        return volGraphDatabase.editNode<GroupNode>(groupId) {
+            group.title?.let { title = it.trimAllSpaces() }
+            group.description?.let { description = it.trimAllSpaces() }
+            group.color?.let { color = it.trimAllSpaces() }
+            group.image?.let { image = it.trimAllSpaces() }
+            group.link?.let { link = it.trimAllSpaces() }
+        }.let {
+            GroupFullData(
+                it.id,
+                it.title,
+                it.description,
+                it.color,
+                it.image,
+                it.link,
+                it.creatorId,
+                it.joined > 0,
+                it.administrated > 0,
+                it.memberCount
+            )
+        }
     }
 
     fun findGroupsByParameters(userId: Long, parameters: GroupDataSearch, offset: Long, amount: Long): List<GroupFullData> {
@@ -405,10 +400,17 @@ class DatabaseModule(
         return deletedRelationships > 0
     }
 
-    fun isAdministrator(userId: Long, groupId: Long): Boolean {
+    fun isGroupAdministrator(userId: Long, groupId: Long): Boolean {
         return volGraphDatabase.findNodeRelatedWith<UserNode, GroupNode>(userId) {
             id = groupId
         }.first().administrated > 0
+    }
+
+    fun isEventCreator(userId: Long, eventId: Long): Boolean {
+        return volGraphDatabase.findNode<EventNode> {
+            id = eventId
+            creatorId = userId
+        }.isNotEmpty()
     }
 
 
@@ -442,7 +444,7 @@ class DatabaseModule(
         }
     }
 
-    fun editEvent(event: EventsDataEdit, eventId: Long): EventFullData? {
+    fun editEvent(event: EventsDataEdit, eventId: Long): EventFullData {
         return volGraphDatabase.editNode<EventNode>(eventId) {
             event.title?.let { title = it.trimAllSpaces() }
             event.place?.let { place = it.trimAllSpaces() }
@@ -450,7 +452,7 @@ class DatabaseModule(
             event.duration?.let { duration = it }
             event.description?.let { description = it.trimAllSpaces() }
             event.link?.let { link = it.trimAllSpaces() }
-        }.firstOrNull()?.let {
+        }.let {
             EventFullData(
                 it.id,
                 it.title,

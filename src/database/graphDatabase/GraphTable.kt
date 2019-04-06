@@ -28,14 +28,6 @@ abstract class GraphTable(
 
             returnItems.add("(${clazzName.decapitalize()})")
 
-//            clazz::class.memberProperties.forEach { property ->
-//                val observeRelationship = property.findAnnotation<ObserveRelationship>()
-//
-//                observeRelationship?.relationName?.forEach { relationName ->
-//                    returnItems.add("(() - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}")
-//                }
-//            }
-
             val query =
                 "CREATE (${clazzName.decapitalize()}: ${clazzName.capitalize()} { ${clazz::class.memberProperties.map { field ->
                     field.isAccessible = true
@@ -121,7 +113,7 @@ abstract class GraphTable(
                 "WHERE (${where.distinct().joinToString(" AND ")})"
             } else {
                 ""
-            }} RETURN ${returnItems.distinct().joinToString(", ")} SKIP $offset ${if (limit > 0) "LIMIT $limit" else ""}"
+            }} RETURN ${returnItems.distinct().joinToString(", ")} ${if (offset > 0) "SKIP $offset" else ""} ${if (limit > 0) "LIMIT $limit" else ""}"
 
             println(query.trimAllSpaces())
 
@@ -195,7 +187,7 @@ abstract class GraphTable(
                 "WHERE (${where.distinct().joinToString(" AND ")})"
             } else {
                 ""
-            }} RETURN ${returnItems.distinct().joinToString(", ")} SKIP $offset ${if (limit > 0) "LIMIT $limit" else ""}"
+            }} RETURN ${returnItems.distinct().joinToString(", ")} ${if (offset > 0) "SKIP $offset" else ""} ${if (limit > 0) "LIMIT $limit" else ""}"
 
             println(query.trimAllSpaces())
 
@@ -205,7 +197,7 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode> editNode(nodeId: Long, block: T.(Filter) -> Unit): List<T> {
+    inline fun <reified T : GraphNode> editNode(nodeId: Long, block: T.(Filter) -> Unit): T {
         val filter = Filter(T::class.java)
 
         val clazz = T::class.constructors.first().call().apply {
@@ -251,7 +243,7 @@ abstract class GraphTable(
 
             return@readTransaction transaction.run(query).list { record ->
                 record.parseToNode<T>()
-            }
+            }.first()
         }
     }
 
@@ -331,26 +323,13 @@ abstract class GraphTable(
                 where.distinct().joinToString(" AND ")
             } else {
                 ""
-            }}) RETURN (${clazzName.decapitalize()}) SKIP $offset ${if (limit > 0) "LIMIT $limit" else ""}"
+            }}) RETURN (${clazzName.decapitalize()}) ${if (offset > 0) "SKIP $offset" else ""} ${if (limit > 0) "LIMIT $limit" else ""}"
 
             println(query.trimAllSpaces())
 
             return@readTransaction transaction.run(query).list { record ->
                 record.parseToNode<T>()
             }
-        }
-    }
-
-    inline fun <reified T : GraphRelationship> relatedWith(firstNodeId: Long, secondNodeId: Long): Boolean {
-        return driver.session().readTransaction { transaction ->
-            val clazz = T::class.constructors.first().call()
-
-            val clazzName = clazz::class.java.name
-
-            val query = "MATCH (a) - [${clazzName.decapitalize()}: ${clazzName.capitalize()}] -> (b) WHERE (ID(a) = $firstNodeId AND ID(b) = $secondNodeId) RETURN ${clazzName.decapitalize()};"
-            println(query.trimAllSpaces())
-
-            return@readTransaction transaction.run(query).list().size.toLong() > 0
         }
     }
 
