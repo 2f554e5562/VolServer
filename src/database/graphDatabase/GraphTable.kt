@@ -28,13 +28,13 @@ abstract class GraphTable(
 
             returnItems.add("(${clazzName.decapitalize()})")
 
-            clazz::class.memberProperties.forEach { property ->
-                val observeRelationship = property.findAnnotation<ObserveRelationship>()
-
-                observeRelationship?.relationName?.forEach { relationName ->
-                    returnItems.add("(() - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}")
-                }
-            }
+//            clazz::class.memberProperties.forEach { property ->
+//                val observeRelationship = property.findAnnotation<ObserveRelationship>()
+//
+//                observeRelationship?.relationName?.forEach { relationName ->
+//                    returnItems.add("(() - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}")
+//                }
+//            }
 
             val query =
                 "CREATE (${clazzName.decapitalize()}: ${clazzName.capitalize()} { ${clazz::class.memberProperties.map { field ->
@@ -176,9 +176,13 @@ abstract class GraphTable(
 
             clazz::class.memberProperties.forEach { property ->
                 val observeRelationship = property.findAnnotation<ObserveRelationship>()
+                val observeAllRelationship = property.findAnnotation<ObserveAllRelationship>()
 
                 observeRelationship?.relationName?.forEach { relationName ->
                     returnItems.add("((${clazzRName.decapitalize()}) - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}")
+                }
+                observeAllRelationship?.relationName?.forEach { relationName ->
+                    returnItems.add("(() - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}All")
                 }
             }
 
@@ -321,7 +325,7 @@ abstract class GraphTable(
             where.add("ID(a) = $nodeId")
 
             val matchQuery =
-                "(a) - [${relationshipName.decapitalize()}: ${relationshipName.capitalize()}] -> (${clazzName.decapitalize()}: ${clazzName.capitalize()})"
+                "(a) - [${relationshipName.decapitalize()}: ${relationshipName.capitalize()}] - (${clazzName.decapitalize()}: ${clazzName.capitalize()})"
 
             val query = "MATCH $matchQuery WHERE (${if (!where.isEmpty()) {
                 where.distinct().joinToString(" AND ")
@@ -359,16 +363,26 @@ abstract class GraphTable(
             this::class.memberProperties.forEach { property ->
                 property as KMutableProperty<*>
 
-                    val observeRelationship = property.findAnnotation<ObserveRelationship>()
+                val observeRelationship = property.findAnnotation<ObserveRelationship>()
+                val observeAllRelationship = property.findAnnotation<ObserveAllRelationship>()
 
-                    if (observeRelationship != null) {
-                        property.setter.call(this, observeRelationship.relationName.map {
-                            return@map if (record.containsKey(it))
-                                record[it].asList().size
-                            else
-                                0
-                        }.sum())
-                    }
+                if (observeRelationship != null) {
+                    property.setter.call(this, observeRelationship.relationName.map {
+                        return@map if (record.containsKey(it))
+                            record[it].asList().size
+                        else
+                            0
+                    }.sum())
+                }
+
+                if (observeAllRelationship != null) {
+                    property.setter.call(this, observeAllRelationship.relationName.map {
+                        return@map if (record.containsKey("${it}All"))
+                            record[it].asList().size
+                        else
+                            0
+                    }.sum())
+                }
 
                 when (property.name) {
                     "id" -> {

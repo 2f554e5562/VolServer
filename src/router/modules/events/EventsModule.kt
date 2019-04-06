@@ -17,7 +17,7 @@ fun Routing.eventsCreate() =
             val eventCreateI = json.readValue<EventCreateI>(call.receive<ByteArray>())
 
             checkPermission(tokenManager, volDatabase) { token, user ->
-                val permission = volDatabase.findUserGroups(user.id, GroupDataSearch(
+                val permission = volDatabase.findGroupsByUser(user.id, GroupDataSearch(
                     canPost = true
                 ), 0, -1)
 
@@ -28,18 +28,7 @@ fun Routing.eventsCreate() =
 
                     respondCreated(
                         EventCreateO(
-                            EventFullData(
-                                event.id,
-                                event.title,
-                                user.id,
-                                event.place,
-                                event.datetime,
-                                event.duration,
-                                event.description,
-                                event.link,
-                                event.joined > 0,
-                                event.liked > 0
-                            )
+                            event
                         ).writeValueAsString()
                     )
                 } else {
@@ -67,6 +56,29 @@ fun Routing.eventsFind() =
                             eventsFindI.parameters,
                             eventsFindI.offset,
                             eventsFindI.amount
+                        )
+                    ).writeValueAsString()
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
+
+fun Routing.eventsFindByUser() =
+    post("/events/find/list/byUser") {
+        try {
+            val eventsFindByUserI = json.readValue<EventsFindByUserI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                respondOk(
+                    EventsFindByUserO(
+                        volDatabase.findEventsByUser(
+                            eventsFindByUserI.userId,
+                            eventsFindByUserI.parameters,
+                            eventsFindByUserI.offset,
+                            eventsFindByUserI.amount
                         )
                     ).writeValueAsString()
                 )

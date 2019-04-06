@@ -1,11 +1,10 @@
 @file:Suppress("RemoveExplicitTypeArguments")
 
-import database.GroupAlreadyExists
 import database.UserAlreadyExists
 
-class DatabaseModule {
-    private val volGraphDatabase = VolGraphDatabase
-
+class DatabaseModule(
+    private val volGraphDatabase: VolGraphDatabase
+) {
     fun createUser(user: UsersCreateI): UserNode {
         val users = volGraphDatabase.findNode<UserNode> {
             login = user.login.trimAllSpaces()
@@ -149,35 +148,40 @@ class DatabaseModule {
     }
 
 
-    fun createGroup(group: GroupCreateData, userId: Long): GroupNode {
-        val groups = volGraphDatabase.findNode<GroupNode> {
+    fun createGroup(group: GroupCreateData, userId: Long): GroupFullData {
+        val groupNode = volGraphDatabase.newNode<GroupNode> {
+            group.description?.let { description = it }
+            group.color?.let { color = it }
+            group.image?.let { image = it }
+            group.link?.let { link = it }
+
             title = group.title.trimAllSpaces()
+            creatorId = userId
         }
 
-        if (groups.isEmpty()) {
-            val groupNode = volGraphDatabase.newNode<GroupNode> {
-                group.description?.let { description = it }
-                group.color?.let { color = it }
-                group.image?.let { image = it }
-                group.link?.let { link = it }
+        volGraphDatabase.newRelationship<GroupCreatorRelationship>(userId, groupNode.id)
 
-                title = group.title.trimAllSpaces()
-                creatorId = userId
-            }
-
-            volGraphDatabase.newRelationship<GroupCreatorRelationship>(userId, groupNode.id)
-
-            return groupNode
-        } else {
-            throw GroupAlreadyExists()
+        return groupNode.let {
+            GroupFullData(
+                it.id,
+                it.title,
+                it.description,
+                it.color,
+                it.image,
+                it.link,
+                it.creatorId,
+                it.joined > 0,
+                it.administrated > 0,
+                it.memberCount
+            )
         }
     }
 
     fun editGroup(group: GroupDataEdit, groupId: Long, userId: Long): GroupFullData? {
-        return if (volGraphDatabase.findNodeRelatedWith<UserNode, GroupNode>(userId) { filter ->
+        return if (volGraphDatabase.findNodeRelatedWith<UserNode, GroupNode>(userId) {
                 id = groupId
             }.isNotEmpty())
-            volGraphDatabase.editNode<GroupNode>(groupId) { filter ->
+            volGraphDatabase.editNode<GroupNode>(groupId) {
                 group.title?.let { title = it.trimAllSpaces() }
                 group.description?.let { description = it.trimAllSpaces() }
                 group.color?.let { color = it.trimAllSpaces() }
@@ -193,7 +197,8 @@ class DatabaseModule {
                     it.link,
                     it.creatorId,
                     it.joined > 0,
-                    it.administrated > 0
+                    it.administrated > 0,
+                    it.memberCount
                 )
             }
         else
@@ -247,29 +252,13 @@ class DatabaseModule {
                 it.link,
                 it.creatorId,
                 it.joined > 0,
-                it.administrated > 0
+                it.administrated > 0,
+                it.memberCount
             )
         }
     }
 
-    fun joinGroup(administrator: Boolean, groupId: Long, userId: Long): Boolean {
-        val createdRelationship = if (administrator)
-            volGraphDatabase.newRelationship<GroupAdministratorRelationship>(userId, groupId)
-        else {
-            volGraphDatabase.newRelationship<GroupJoinedRelationship>(userId, groupId)
-        }
-
-        return createdRelationship != null
-    }
-
-    fun leaveGroup(groupId: Long, userId: Long): Boolean {
-        val deletedRelationships = volGraphDatabase.deleteRelationship<GroupAdministratorRelationship>(userId, groupId) +
-                volGraphDatabase.deleteRelationship<GroupJoinedRelationship>(userId, groupId)
-
-        return deletedRelationships > 0
-    }
-
-    fun findUserGroups(userId: Long, parameters: GroupDataSearch, offset: Long, amount: Long): List<GroupFullData> {
+    fun findGroupsByUser(userId: Long, parameters: GroupDataSearch, offset: Long, amount: Long): List<GroupFullData> {
         return volGraphDatabase.findRelationshipNode<GroupNode, GroupJoinedRelationship>(userId, amount, offset) { filter ->
             parameters.ids?.let {
                 filter.add { className ->
@@ -316,9 +305,104 @@ class DatabaseModule {
                 it.link,
                 it.creatorId,
                 it.joined > 0,
-                it.administrated > 0
+                it.administrated > 0,
+                it.memberCount
             )
         }
+    }
+
+    fun findUsersByGroup(groupId: Long, parameters: UserDataSearch, offset: Long, amount: Long): List<UserData> {
+        return volGraphDatabase.findRelationshipNode<UserNode, GroupJoinedRelationship>(groupId, amount, offset) { filter ->
+            parameters.ids?.let {
+                filter.add { className ->
+                    "ID($className)" inList it
+                }
+            }
+
+            parameters.firstName?.let {
+                filter.add { className ->
+                    "$className.firstName" like it
+                }
+            }
+
+            parameters.lastName?.let {
+                filter.add { className ->
+                    "$className.lastName" like it
+                }
+            }
+
+            parameters.middleName?.let {
+                filter.add { className ->
+                    "$className.middleName" like it
+                }
+            }
+
+            parameters.birthdayMin?.let {
+                filter.add { className ->
+                    "$className.birthday" greaterOrEquals it
+                }
+            }
+
+            parameters.birthdayMax?.let {
+                filter.add { className ->
+                    "$className.birthday" lessOrEquals it
+                }
+            }
+
+            parameters.about?.let {
+                filter.add { className ->
+                    "$className.about" like it
+                }
+            }
+
+            parameters.phoneNumber?.let {
+                filter.add { className ->
+                    "$className.phoneNumber" like it
+                }
+            }
+
+            parameters.email?.let {
+                filter.add { className ->
+                    "$className.email" like it
+                }
+            }
+
+            parameters.link?.let {
+                filter.add { className ->
+                    "$className.link" like it
+                }
+            }
+        }.map {
+            UserData(
+                it.id,
+                it.firstName,
+                it.lastName,
+                it.middleName,
+                it.birthday,
+                it.about,
+                it.phoneNumber,
+                it.image,
+                it.email,
+                it.link
+            )
+        }
+    }
+
+    fun joinGroup(administrator: Boolean, groupId: Long, userId: Long): Boolean {
+        val createdRelationship = if (administrator)
+            volGraphDatabase.newRelationship<GroupAdministratorRelationship>(userId, groupId)
+        else {
+            volGraphDatabase.newRelationship<GroupJoinedRelationship>(userId, groupId)
+        }
+
+        return createdRelationship != null
+    }
+
+    fun leaveGroup(groupId: Long, userId: Long): Boolean {
+        val deletedRelationships = volGraphDatabase.deleteRelationship<GroupAdministratorRelationship>(userId, groupId) +
+                volGraphDatabase.deleteRelationship<GroupJoinedRelationship>(userId, groupId)
+
+        return deletedRelationships > 0
     }
 
     fun isAdministrator(userId: Long, groupId: Long): Boolean {
@@ -328,27 +412,33 @@ class DatabaseModule {
     }
 
 
-    fun createEvent(event: EventCreateData, userId: Long): EventNode {
-        val events = volGraphDatabase.findNode<EventNode> {
-            title = event.title.trimAllSpaces()
+    fun createEvent(event: EventCreateData, userId: Long): EventFullData {
+        val eventNode = volGraphDatabase.newNode<EventNode> {
+            creatorId = userId
+            title = event.title
+            place = event.place
+            datetime = event.datetime
+            duration = event.duration
+            description = event.description
+            link = event.link
         }
 
-        if (events.isEmpty()) {
-            val eventNode = volGraphDatabase.newNode<EventNode> {
-                creatorId = userId
-                title = event.title
-                place = event.place
-                datetime = event.datetime
-                duration = event.duration
-                description = event.description
-                link = event.link
-            }
+        volGraphDatabase.newRelationship<EventCreatorRelationship>(userId, eventNode.id)
 
-            volGraphDatabase.newRelationship<EventCreatorRelationship>(userId, eventNode.id)
-
-            return eventNode
-        } else {
-            throw GroupAlreadyExists()
+        return eventNode.let {
+            EventFullData(
+                it.id,
+                it.title,
+                it.creatorId,
+                it.place,
+                it.datetime,
+                it.duration,
+                it.description,
+                it.link,
+                it.joined > 0,
+                it.liked > 0,
+                it.likeCount
+            )
         }
     }
 
@@ -371,7 +461,8 @@ class DatabaseModule {
                 it.description,
                 it.link,
                 it.joined > 0,
-                it.liked > 0
+                it.liked > 0,
+                it.likeCount
             )
         }
     }
@@ -448,7 +539,133 @@ class DatabaseModule {
                 it.description,
                 it.link,
                 it.joined > 0,
-                it.liked > 0
+                it.liked > 0,
+                it.likeCount
+            )
+        }
+    }
+
+    fun findEventsByUser(userId: Long, parameters: EventDataSearch, offset: Long, amount: Long): List<EventFullData> {
+        return volGraphDatabase.findRelationshipNode<EventNode, EventJoinedRelationship>(userId, amount, offset) { filter ->
+            parameters.ids?.let {
+                filter.add { className ->
+                    "ID($className)" inList it
+                }
+            }
+
+            parameters.title?.let {
+                filter.add { className ->
+                    "$className.title" like it
+                }
+            }
+
+            parameters.description?.let {
+                filter.add { className ->
+                    "$className.description" like it
+                }
+            }
+
+            parameters.link?.let {
+                filter.add { className ->
+                    "$className.link" like it
+                }
+            }
+
+            parameters.creatorIds?.let {
+                filter.add { className ->
+                    "$className.creatorId" inList it
+                }
+            }
+        }.map {
+            EventFullData(
+                it.id,
+                it.title,
+                it.creatorId,
+                it.place,
+                it.datetime,
+                it.duration,
+                it.description,
+                it.link,
+                it.joined > 0,
+                it.liked > 0,
+                it.likeCount
+            )
+        }
+    }
+
+    fun findUsersByEvent(eventId: Long, parameters: UserDataSearch, offset: Long, amount: Long): List<UserData> {
+        return volGraphDatabase.findRelationshipNode<UserNode, EventJoinedRelationship>(eventId, amount, offset) { filter ->
+            parameters.ids?.let {
+                filter.add { className ->
+                    "ID($className)" inList it
+                }
+            }
+
+            parameters.firstName?.let {
+                filter.add { className ->
+                    "$className.firstName" like it
+                }
+            }
+
+            parameters.lastName?.let {
+                filter.add { className ->
+                    "$className.lastName" like it
+                }
+            }
+
+            parameters.middleName?.let {
+                filter.add { className ->
+                    "$className.middleName" like it
+                }
+            }
+
+            parameters.birthdayMin?.let {
+                filter.add { className ->
+                    "$className.birthday" greaterOrEquals it
+                }
+            }
+
+            parameters.birthdayMax?.let {
+                filter.add { className ->
+                    "$className.birthday" lessOrEquals it
+                }
+            }
+
+            parameters.about?.let {
+                filter.add { className ->
+                    "$className.about" like it
+                }
+            }
+
+            parameters.phoneNumber?.let {
+                filter.add { className ->
+                    "$className.phoneNumber" like it
+                }
+            }
+
+            parameters.email?.let {
+                filter.add { className ->
+                    "$className.email" like it
+                }
+            }
+
+            parameters.link?.let {
+                filter.add { className ->
+                    "$className.link" like it
+                }
+            }
+        }.map {
+            UserData(
+                it.id,
+                it.firstName,
+                it.lastName,
+                it.middleName,
+                it.birthday,
+                it.about,
+                it.phoneNumber,
+                it.image,
+                it.email,
+                it.link
             )
         }
     }
@@ -485,7 +702,8 @@ class DatabaseModule {
                 it.description,
                 it.link,
                 it.joined > 0,
-                it.liked > 0
+                it.liked > 0,
+                it.likeCount
             )
         }
     }

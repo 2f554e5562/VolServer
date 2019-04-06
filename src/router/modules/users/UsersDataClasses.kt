@@ -16,6 +16,28 @@ data class UsersFindO(
     @JsonProperty("users") val users: List<UserData>
 )
 
+data class UsersFindByGroupI(
+    @JsonProperty("group_id") val groupId: Long,
+    @JsonProperty("offset") val offset: Long,
+    @JsonProperty("amount") val amount: Long,
+    @JsonProperty("parameters") val parameters: UserDataSearch
+)
+
+data class UsersFindByGroupO(
+    @JsonProperty("users") val users: List<UserData>
+)
+
+data class UsersFindByEventI(
+    @JsonProperty("event_id") val eventId: Long,
+    @JsonProperty("offset") val offset: Long,
+    @JsonProperty("amount") val amount: Long,
+    @JsonProperty("parameters") val parameters: UserDataSearch
+)
+
+data class UsersFindByEventO(
+    @JsonProperty("users") val users: List<UserData>
+)
+
 data class UsersProfileEditI(
     @JsonProperty("new_data") val newData: UserDataEdit
 )

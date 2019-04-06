@@ -25,8 +25,13 @@ import io.ktor.routing.routing
 import usersFind
 import usersProfileEdit
 import usersProfileGet
+import VolGraphDatabase
+import eventsFindByUser
+import groupsFindByUser
+import usersFindByEvent
+import usersFindByGroup
 
-val volDatabase = DatabaseModule()
+val volDatabase = DatabaseModule(VolGraphDatabase)
 val tokenManager = TokenManager()
 val json = jacksonObjectMapper()
 
@@ -45,6 +50,10 @@ fun Application.module() {
 
         usersFind()
 
+        usersFindByGroup()
+
+        usersFindByEvent()
+
         usersProfileEdit()
 
 
@@ -53,6 +62,8 @@ fun Application.module() {
         groupsEdit()
 
         groupsFind()
+
+        groupsFindByUser()
 
         groupsJoin()
 
@@ -66,6 +77,8 @@ fun Application.module() {
         eventsEdit()
 
         eventsFind()
+
+        eventsFindByUser()
 
         eventsJoin()
 

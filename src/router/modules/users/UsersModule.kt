@@ -25,8 +25,9 @@ fun Routing.usersProfileGet() =
         }
     }
 
+
 fun Routing.usersFind() =
-    post("/users/list/get") {
+    post("/users/list/find") {
         try {
             val usersFindI = json.readValue<UsersFindI>(call.receive<ByteArray>())
 
@@ -42,6 +43,45 @@ fun Routing.usersFind() =
             respondBadRequest()
         }
     }
+
+
+fun Routing.usersFindByGroup() =
+    post("/users/find/list/byGroup") {
+        try {
+            val usersFindByGroupI = json.readValue<UsersFindByGroupI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                respondOk(
+                    UsersFindByGroupO(
+                        volDatabase.findUsersByGroup(usersFindByGroupI.groupId, usersFindByGroupI.parameters, usersFindByGroupI.offset, usersFindByGroupI.amount)
+                    ).writeValueAsString()
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
+
+
+fun Routing.usersFindByEvent() =
+    post("/users/find/list/byEvent") {
+        try {
+            val usersFindByEventI = json.readValue<UsersFindByEventI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                respondOk(
+                    UsersFindByEventO(
+                        volDatabase.findUsersByEvent(usersFindByEventI.eventId, usersFindByEventI.parameters, usersFindByEventI.offset, usersFindByEventI.amount)
+                    ).writeValueAsString()
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
+
 
 fun Routing.usersProfileEdit() =
     post("/users/profile/edit") {

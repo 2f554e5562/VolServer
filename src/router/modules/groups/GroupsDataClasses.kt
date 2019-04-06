@@ -18,6 +18,17 @@ data class GroupsFindO(
     @JsonProperty("groups") val groups: List<GroupFullData>
 )
 
+data class GroupsFindByUserI(
+    @JsonProperty("user_id") val userId: Long,
+    @JsonProperty("offset") val offset: Long,
+    @JsonProperty("amount") val amount: Long,
+    @JsonProperty("parameters") val parameters: GroupDataSearch
+)
+
+data class GroupsFindByUserO(
+    @JsonProperty("groups") val groups: List<GroupFullData>
+)
+
 data class GroupsEditI(
     @JsonProperty("id") val id: Long,
     @JsonProperty("new_data") val newData: GroupDataEdit
@@ -54,7 +65,8 @@ data class GroupFullData(
     @JsonProperty("link") val link: String?,
     @JsonProperty("creator_id") val creatorId: Long,
     @JsonProperty("joined") val joined: Boolean,
-    @JsonProperty("administrated") val administrated: Boolean
+    @JsonProperty("administrated") val administrated: Boolean,
+    @JsonProperty("member_count") val memberCount: Long
 )
 
 data class GroupDataSearch(

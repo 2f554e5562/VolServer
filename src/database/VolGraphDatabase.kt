@@ -1,4 +1,3 @@
-import database.confFile
 import org.neo4j.driver.v1.AuthTokens
 import org.neo4j.driver.v1.GraphDatabase
 
@@ -35,6 +34,8 @@ class GroupNode : GraphNode() {
     var joined by NotNullable<Long>()
     @ObserveRelationship("groupAdministratorRelationship", "groupCreatorRelationship")
     var administrated by NotNullable<Long>()
+    @ObserveAllRelationship("groupJoinedRelationship")
+    var memberCount by NotNullable<Long>()
 }
 
 class EventNode : GraphNode() {
@@ -49,6 +50,8 @@ class EventNode : GraphNode() {
     var joined by NotNullable<Long>()
     @ObserveRelationship("eventLikedRelationship")
     var liked by NotNullable<Long>()
+    @ObserveAllRelationship("eventLikedRelationship")
+    var likeCount by NotNullable<Long>()
 }
 
 class GroupCreatorRelationship : GraphRelationship(UserNode::class.java, GroupNode::class.java)

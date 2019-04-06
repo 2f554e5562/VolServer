@@ -18,6 +18,17 @@ data class EventsFindO(
     @JsonProperty("events") val events: List<EventFullData>
 )
 
+data class EventsFindByUserI(
+    @JsonProperty("user_id") val userId: Long,
+    @JsonProperty("offset") val offset: Long,
+    @JsonProperty("amount") val amount: Long,
+    @JsonProperty("parameters") val parameters: EventDataSearch
+)
+
+data class EventsFindByUserO(
+    @JsonProperty("events") val events: List<EventFullData>
+)
+
 data class EventsEditI(
     @JsonProperty("id") val id: Long,
     @JsonProperty("new_data") val newData: EventsDataEdit
@@ -75,7 +86,8 @@ data class EventFullData(
     @JsonProperty("description") val description: String?,
     @JsonProperty("link") val link: String?,
     @JsonProperty("joined") val joined: Boolean?,
-    @JsonProperty("liked") val liked: Boolean?
+    @JsonProperty("liked") val liked: Boolean?,
+    @JsonProperty("likeCount") val likes: Long?
 )
 
 data class EventDataSearch(

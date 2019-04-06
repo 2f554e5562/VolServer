@@ -23,17 +23,7 @@ fun Routing.groupsCreate() =
 
                 respondCreated(
                     GroupCreateO(
-                        GroupFullData(
-                            group.id,
-                            group.title,
-                            group.description,
-                            group.color,
-                            group.image,
-                            group.link,
-                            group.creatorId,
-                            group.joined > 0,
-                            group.administrated > 0
-                        )
+                        group
                     ).writeValueAsString()
                 )
             }
@@ -55,6 +45,25 @@ fun Routing.groupsFind() =
                 respondOk(
                     GroupsFindO(
                         volDatabase.findGroupsByParameters(user.id, groupFindI.parameters, groupFindI.offset, groupFindI.amount)
+                    ).writeValueAsString()
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            respondBadRequest()
+        }
+    }
+
+
+fun Routing.groupsFindByUser() =
+    post("/groups/find/list/byUser") {
+        try {
+            val groupsFindByUserI = json.readValue<GroupsFindByUserI>(call.receive<ByteArray>())
+
+            checkPermission(tokenManager, volDatabase) { token, user ->
+                respondOk(
+                    GroupsFindByUserO(
+                        volDatabase.findGroupsByUser(groupsFindByUserI.userId, groupsFindByUserI.parameters, groupsFindByUserI.offset, groupsFindByUserI.amount)
                     ).writeValueAsString()
                 )
             }
