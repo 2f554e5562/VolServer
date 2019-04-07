@@ -4,8 +4,11 @@ import io.ktor.http.ContentType
 import io.ktor.request.receive
 import io.ktor.request.receiveStream
 import io.ktor.response.respondBytes
+import io.ktor.response.respondFile
 import io.ktor.routing.Routing
+import io.ktor.routing.get
 import io.ktor.routing.post
+import io.ktor.sessions.sessions
 import router.json
 import router.tokenManager
 import java.io.File
@@ -60,4 +63,14 @@ fun Routing.imageLoad() =
             e.printStackTrace()
             respondBadRequest()
         }
+    }
+
+fun Routing.privacyPolicy() =
+    get("/privacyPolicy") {
+        try {
+            call.respondFile(File("files/privacyPolicy.html"))
+        } catch (e: Exception) {
+            respondNotFound()
+        }
+
     }

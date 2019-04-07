@@ -28,6 +28,7 @@ import usersProfileGet
 import VolGraphDatabase
 import eventsFindByUser
 import groupsFindByUser
+import privacyPolicy
 import usersFindByEvent
 import usersFindByGroup
 
@@ -90,5 +91,7 @@ fun Application.module() {
         imageUpload()
 
         imageLoad()
+
+        privacyPolicy()
     }
 }
