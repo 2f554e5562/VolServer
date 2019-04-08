@@ -1,26 +1,21 @@
-import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.application.call
 import io.ktor.http.ContentType
-import io.ktor.request.receive
 import io.ktor.request.receiveStream
 import io.ktor.response.respondBytes
 import io.ktor.response.respondFile
 import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.post
-import io.ktor.sessions.sessions
-import router.json
-import router.tokenManager
 import java.io.File
 
 fun Routing.imageUpload() =
-    post("/image/upload") {
+    post("/images") {
         try {
             val uploadedFile = call.receiveStream()
 
             val file = File(
-                "/home/nikita/Desktop/VolServer/files/uploaded/images/",
-                "${System.currentTimeMillis()} ${uploadedFile.hashCode()}".getHashSHA256()
+                "files/uploaded/images",
+                "${uploadedFile.hashCode().toString().getHashSHA256()}_${System.currentTimeMillis()}"
             )
 
             file.outputStream().buffered().use { output ->
@@ -39,26 +34,23 @@ fun Routing.imageUpload() =
     }
 
 fun Routing.imageLoad() =
-    post("/image/load") {
+    get("/images/{imageName}") {
         try {
-            val imageLoadI = json.readValue<ImageLoadI>(call.receive<ByteArray>())
+            val fileName = call.parameters["imageName"]
 
             val file = File(
-                "/home/nikita/Desktop/VolServer/files/uploaded/images/",
-                imageLoadI.fileName
+                "files/uploaded/images",
+                fileName
             )
 
-            if (!file.exists()) {
+            if (file.exists()) {
                 call.respondBytes(
                     file.readBytes(),
                     ContentType.Image.Any
                 )
+            } else {
+                respondNotFound()
             }
-
-            call.respondBytes(
-                file.readBytes(),
-                ContentType.Image.Any
-            )
         } catch (e: Exception) {
             e.printStackTrace()
             respondBadRequest()

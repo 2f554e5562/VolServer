@@ -4,10 +4,6 @@ data class ImageUploadO(
     @JsonProperty("file_name") val fileName: String
 )
 
-data class ImageLoadI(
-    @JsonProperty("file_name") val fileName: String
-)
-
 data class ApplyCodeI(
     @JsonProperty("code") val code: String
 )
