@@ -55,7 +55,8 @@ fun Routing.eventsFind() =
                         volDatabase.findEventsByParameters(
                             eventsFindI.parameters,
                             eventsFindI.offset,
-                            eventsFindI.amount
+                            eventsFindI.amount,
+                            user.id
                         )
                     ).writeValueAsString()
                 )
@@ -65,6 +66,7 @@ fun Routing.eventsFind() =
             respondBadRequest()
         }
     }
+
 
 fun Routing.eventsFindByUser() =
     post("/events/find/list/byUser") {

@@ -437,9 +437,11 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.joined > 0,
+                it.image,
                 it.liked > 0,
-                it.likeCount
+                it.likeCount,
+                it.joined > 0,
+                it.joinCount
             )
         }
     }
@@ -462,15 +464,17 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.joined > 0,
+                it.image,
                 it.liked > 0,
-                it.likeCount
+                it.likeCount,
+                it.joined > 0,
+                it.joinCount
             )
         }
     }
 
-    fun findEventsByParameters(parameters: EventDataSearch, offset: Long, amount: Long): List<EventFullData> {
-        return volGraphDatabase.findNode<EventNode>(amount, offset) { filter ->
+    fun findEventsByParameters(parameters: EventDataSearch, offset: Long, amount: Long, byUser: Long): List<EventFullData> {
+        return volGraphDatabase.findNode<EventNode>(byUser, amount, offset) { filter ->
             parameters.ids?.let {
                 filter.add { className ->
                     "ID($className)" inList it
@@ -540,9 +544,11 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.joined > 0,
+                it.image,
                 it.liked > 0,
-                it.likeCount
+                it.likeCount,
+                it.joined > 0,
+                it.joinCount
             )
         }
     }
@@ -588,9 +594,11 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.joined > 0,
+                it.image,
                 it.liked > 0,
-                it.likeCount
+                it.likeCount,
+                it.joined > 0,
+                it.joinCount
             )
         }
     }
@@ -703,9 +711,11 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.joined > 0,
+                it.image,
                 it.liked > 0,
-                it.likeCount
+                it.likeCount,
+                it.joined > 0,
+                it.joinCount
             )
         }
     }

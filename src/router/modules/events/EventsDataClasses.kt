@@ -85,9 +85,11 @@ data class EventFullData(
     @JsonProperty("duration") val duration: Long?,
     @JsonProperty("description") val description: String?,
     @JsonProperty("link") val link: String?,
-    @JsonProperty("joined") val joined: Boolean?,
-    @JsonProperty("liked") val liked: Boolean?,
-    @JsonProperty("likeCount") val likes: Long?
+    @JsonProperty("image") val image: String?,
+    @JsonProperty("liked") val liked: Boolean,
+    @JsonProperty("like_count") val likeCount: Long,
+    @JsonProperty("joined") val joined: Boolean,
+    @JsonProperty("join_count") val joinCount: Long
 )
 
 data class EventDataSearch(

@@ -58,12 +58,16 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode> findNode(limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
+    inline fun <reified T : GraphNode> findNode(byNode: Long? = null, limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
         val filter = Filter(T::class.java)
 
         val clazz = T::class.constructors.first().call().apply {
             block(filter)
         }
+        val byNodeQuery = if (byNode != null)
+            "a"
+        else
+            ""
 
         val clazzName = clazz::class.java.name
 
@@ -72,6 +76,8 @@ abstract class GraphTable(
             val where = mutableListOf<String>()
             val returnItems = mutableListOf<String>()
 
+            if (byNode != null)
+                where.add("ID(a) = $byNode")
             returnItems.add("(${clazzName.decapitalize()})")
 
             clazz::class.memberProperties.forEach { field ->
@@ -98,18 +104,23 @@ abstract class GraphTable(
 
             clazz::class.memberProperties.forEach { property ->
                 val observeRelationship = property.findAnnotation<ObserveRelationship>()
+                val observeAllRelationship = property.findAnnotation<ObserveAllRelationship>()
 
                 observeRelationship?.relationName?.forEach { relationName ->
-                    returnItems.add("(() - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}")
+                    returnItems.add("(($byNodeQuery) - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}")
+                }
+
+                observeAllRelationship?.relationName?.forEach { relationName ->
+                    returnItems.add("(() - [:${relationName.capitalize()}] -> (${clazzName.decapitalize()})) as ${relationName.decapitalize()}All")
                 }
             }
 
             val matchQuery =
-                "${clazzName.decapitalize()}: ${clazzName.capitalize()} { ${params.distinct().joinToString(
+                "MATCH (${clazzName.decapitalize()}: ${clazzName.capitalize()} { ${params.distinct().joinToString(
                     ", "
-                )} }"
+                )} })${if (byNode != null) ", ($byNodeQuery)" else ""}"
 
-            val query = "MATCH ($matchQuery) ${if (!where.isEmpty()) {
+            val query = "$matchQuery ${if (!where.isEmpty()) {
                 "WHERE (${where.distinct().joinToString(" AND ")})"
             } else {
                 ""
@@ -347,8 +358,8 @@ abstract class GraphTable(
 
                 if (observeRelationship != null) {
                     property.setter.call(this, observeRelationship.relationName.map {
-                        return@map if (record.containsKey(it))
-                            record[it].asList().size
+                        return@map if (record.containsKey(it.decapitalize()))
+                            record[it].size()
                         else
                             0
                     }.sum())
@@ -356,9 +367,9 @@ abstract class GraphTable(
 
                 if (observeAllRelationship != null) {
                     property.setter.call(this, observeAllRelationship.relationName.map {
-                        return@map if (record.containsKey("${it}All"))
-                            record[it].asList().size
-                        else
+                        return@map if (record.containsKey("${it.decapitalize()}All")) {
+                            record["${it}All"].size()
+                        } else
                             0
                     }.sum())
                 }

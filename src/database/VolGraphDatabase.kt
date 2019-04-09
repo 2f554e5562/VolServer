@@ -46,12 +46,15 @@ class EventNode : GraphNode() {
     var duration by Nullable<Long>()
     var description by Nullable<String>()
     var link by Nullable<String>()
-    @ObserveRelationship("eventJoinedRelationship")
-    var joined by NotNullable<Long>()
+    var image by Nullable<String>()
     @ObserveRelationship("eventLikedRelationship")
     var liked by NotNullable<Long>()
     @ObserveAllRelationship("eventLikedRelationship")
     var likeCount by NotNullable<Long>()
+    @ObserveRelationship("eventJoinedRelationship")
+    var joined by NotNullable<Long>()
+    @ObserveAllRelationship("eventJoinedRelationship")
+    var joinCount by NotNullable<Long>()
 }
 
 class GroupCreatorRelationship : GraphRelationship(UserNode::class.java, GroupNode::class.java)
