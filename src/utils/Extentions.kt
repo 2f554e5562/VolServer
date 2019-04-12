@@ -69,7 +69,7 @@ suspend inline fun PipelineContext<Unit, ApplicationCall>.checkPermission(
                 user.birthday,
                 user.about,
                 user.phoneNumber,
-                user.image,
+                user.image?.createImageLink(),
                 user.email,
                 user.link
             )
@@ -90,5 +90,13 @@ suspend inline fun PipelineContext<Unit, ApplicationCall>.checkPermission(
         }
     } else {
         respondUnauthorized()
+    }
+}
+
+fun String.createImageLink(): String {
+    return if (startsWith("http://") || startsWith("https://")) {
+        this
+    } else {
+        "http://${confFile.imageServerUrl}/images/$this"
     }
 }

@@ -1,7 +1,7 @@
 import com.fasterxml.jackson.annotation.JsonProperty
 
 data class ImageUploadO(
-    @JsonProperty("file_name") val fileName: String
+    @JsonProperty("image_link") val imageLink: String
 )
 
 data class ApplyCodeI(

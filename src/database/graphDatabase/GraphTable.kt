@@ -58,7 +58,12 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode> findNode(byNode: Long? = null, limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
+    inline fun <reified T : GraphNode> findNode(
+        byNode: Long? = null,
+        limit: Long = 20,
+        offset: Long = 0,
+        block: T.(Filter) -> Unit
+    ): List<T> {
         val filter = Filter(T::class.java)
 
         val clazz = T::class.constructors.first().call().apply {
@@ -95,7 +100,13 @@ abstract class GraphTable(
                     }
                     else -> {
                         if (fieldValue != null)
-                            params.add("${field.name}: \"$fieldValue\"")
+                            when (field.returnType.javaType) {
+                                String::class.java ->
+                                    params.add("${field.name}: \"$fieldValue\"")
+
+                                else ->
+                                    params.add("${field.name}: $fieldValue")
+                            }
                     }
                 }
             }
@@ -134,7 +145,12 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified R : GraphNode, reified T : GraphNode> findNodeRelatedWith(relatedNodeId: Long, limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
+    inline fun <reified R : GraphNode, reified T : GraphNode> findNodeRelatedWith(
+        relatedNodeId: Long,
+        limit: Long = 20,
+        offset: Long = 0,
+        block: T.(Filter) -> Unit
+    ): List<T> {
         val filter = Filter(T::class.java)
 
         val clazz = T::class.constructors.first().call().apply {
@@ -258,7 +274,10 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphRelationship> newRelationship(firstNodeId: Long, secondNodeId: Long): GraphRelationship? {
+    inline fun <reified T : GraphRelationship> newRelationship(
+        firstNodeId: Long,
+        secondNodeId: Long
+    ): GraphRelationship? {
         return driver.session().readTransaction { transaction ->
             val clazz = T::class.constructors.first().call()
 
@@ -288,7 +307,12 @@ abstract class GraphTable(
         }
     }
 
-    inline fun <reified T : GraphNode, reified R : GraphRelationship> findRelationshipNode(nodeId: Long, limit: Long = 20, offset: Long = 0, block: T.(Filter) -> Unit): List<T> {
+    inline fun <reified T : GraphNode, reified R : GraphRelationship> findRelationshipNode(
+        nodeId: Long,
+        limit: Long = 20,
+        offset: Long = 0,
+        block: T.(Filter) -> Unit
+    ): List<T> {
         val filter = Filter(T::class.java)
 
         val relationshipName = R::class.java.name

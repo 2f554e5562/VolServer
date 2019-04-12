@@ -63,7 +63,7 @@ class DatabaseModule(
                 it.birthday,
                 it.about,
                 it.phoneNumber,
-                it.image,
+                it.image?.createImageLink(),
                 it.email,
                 it.link
             )
@@ -140,7 +140,7 @@ class DatabaseModule(
                 it.birthday,
                 it.about,
                 it.phoneNumber,
-                it.image,
+                it.image?.createImageLink(),
                 it.email,
                 it.link
             )
@@ -167,7 +167,7 @@ class DatabaseModule(
                 it.title,
                 it.description,
                 it.color,
-                it.image,
+                it.image?.createImageLink(),
                 it.link,
                 it.creatorId,
                 it.joined > 0,
@@ -190,7 +190,7 @@ class DatabaseModule(
                 it.title,
                 it.description,
                 it.color,
-                it.image,
+                it.image?.createImageLink(),
                 it.link,
                 it.creatorId,
                 it.joined > 0,
@@ -243,7 +243,7 @@ class DatabaseModule(
                 it.title,
                 it.description,
                 it.color,
-                it.image,
+                it.image?.createImageLink(),
                 it.link,
                 it.creatorId,
                 it.joined > 0,
@@ -296,7 +296,7 @@ class DatabaseModule(
                 it.title,
                 it.description,
                 it.color,
-                it.image,
+                it.image?.createImageLink(),
                 it.link,
                 it.creatorId,
                 it.joined > 0,
@@ -376,7 +376,7 @@ class DatabaseModule(
                 it.birthday,
                 it.about,
                 it.phoneNumber,
-                it.image,
+                it.image?.createImageLink(),
                 it.email,
                 it.link
             )
@@ -437,7 +437,7 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.image,
+                it.image?.createImageLink(),
                 it.liked > 0,
                 it.likeCount,
                 it.joined > 0,
@@ -452,6 +452,7 @@ class DatabaseModule(
             event.place?.let { place = it.trimAllSpaces() }
             event.datetime?.let { datetime = it }
             event.duration?.let { duration = it }
+            event.image?.let { image = it }
             event.description?.let { description = it.trimAllSpaces() }
             event.link?.let { link = it.trimAllSpaces() }
         }.let {
@@ -464,7 +465,7 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.image,
+                it.image?.createImageLink(),
                 it.liked > 0,
                 it.likeCount,
                 it.joined > 0,
@@ -544,7 +545,7 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.image,
+                it.image?.createImageLink(),
                 it.liked > 0,
                 it.likeCount,
                 it.joined > 0,
@@ -594,7 +595,7 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.image,
+                it.image?.createImageLink(),
                 it.liked > 0,
                 it.likeCount,
                 it.joined > 0,
@@ -673,7 +674,7 @@ class DatabaseModule(
                 it.birthday,
                 it.about,
                 it.phoneNumber,
-                it.image,
+                it.image?.createImageLink(),
                 it.email,
                 it.link
             )
@@ -711,7 +712,7 @@ class DatabaseModule(
                 it.duration,
                 it.description,
                 it.link,
-                it.image,
+                it.image?.createImageLink(),
                 it.liked > 0,
                 it.likeCount,
                 it.joined > 0,

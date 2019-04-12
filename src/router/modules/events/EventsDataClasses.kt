@@ -111,5 +111,6 @@ data class EventsDataEdit(
     @JsonProperty("datetime") val datetime: Long? = null,
     @JsonProperty("duration") val duration: Long? = null,
     @JsonProperty("description") val description: String? = null,
+    @JsonProperty("image") val image: String? = null,
     @JsonProperty("link") val link: String? = null
 )

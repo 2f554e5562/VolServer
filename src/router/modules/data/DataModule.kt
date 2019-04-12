@@ -6,27 +6,31 @@ import io.ktor.response.respondFile
 import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.post
+import router.tokenManager
+import router.volDatabase
 import java.io.File
 
 fun Routing.imageUpload() =
     post("/images") {
         try {
-            val uploadedFile = call.receiveStream()
+            checkPermission(tokenManager, volDatabase) { _, _ ->
+                val uploadedFile = call.receiveStream()
 
-            val file = File(
-                "files/uploaded/images",
-                "${uploadedFile.hashCode().toString().getHashSHA256()}_${System.currentTimeMillis()}"
-            )
+                val file = File(
+                    "files/uploaded/images",
+                    "${uploadedFile.hashCode().toString().getHashSHA256()}_${System.currentTimeMillis()}"
+                )
 
-            file.outputStream().buffered().use { output ->
-                uploadedFile.copyToSuspend(output)
+                file.outputStream().buffered().use { output ->
+                    uploadedFile.copyToSuspend(output)
+                }
+
+                respondOk(
+                    ImageUploadO(
+                        file.name.createImageLink()
+                    ).writeValueAsString()
+                )
             }
-
-            respondOk(
-                ImageUploadO(
-                    file.name
-                ).writeValueAsString()
-            )
         } catch (e: Exception) {
             e.printStackTrace()
             respondBadRequest()
@@ -36,20 +40,22 @@ fun Routing.imageUpload() =
 fun Routing.imageLoad() =
     get("/images/{imageName}") {
         try {
-            val fileName = call.parameters["imageName"]
+            checkPermission(tokenManager, volDatabase) { _, _ ->
+                val fileName = call.parameters["imageName"]
 
-            val file = File(
-                "files/uploaded/images",
-                fileName
-            )
-
-            if (file.exists()) {
-                call.respondBytes(
-                    file.readBytes(),
-                    ContentType.Image.Any
+                val file = File(
+                    "files/uploaded/images",
+                    fileName
                 )
-            } else {
-                respondNotFound()
+
+                if (file.exists()) {
+                    call.respondBytes(
+                        file.readBytes(),
+                        ContentType.Image.Any
+                    )
+                } else {
+                    respondNotFound()
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
